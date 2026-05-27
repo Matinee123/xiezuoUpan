@@ -8,3 +8,6 @@ _backup/
 _upgrade_tmp/
 *.whl
 exports/
+
+_models/llama-server.exe
+_models/*.gguf

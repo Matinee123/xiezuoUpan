@@ -12,6 +12,7 @@ from .llm import call_llm, LLMError
 from .export import export_markdown, export_html, export_wechat_html, export_docx, export_pdf
 from .template import TemplateEngine
 from .updater import check_update, apply_update
+from .local_llm import model_info, start_server, stop_server, is_running
 
 HERE = Path(__file__).resolve().parent.parent
 
@@ -83,13 +84,15 @@ class APIHandler(SimpleHTTPRequestHandler):
         elif path == "/api/config":
             self._json_response({
                 "engine": config.engine,
-                "engines": ["deepseek", "greenapi", "ollama", "custom"],
+                "engines": ["deepseek", "greenapi", "ollama", "custom", "local"],
                 "deepseek_api_key": config.deepseek_api_key,
                 "deepseek_model": config.deepseek_model,
                 "greenapi_api_key": config.greenapi_api_key,
                 "greenapi_base_url": config.greenapi_base_url,
                 "greenapi_model": config.greenapi_model,
                 "ollama_model": config.ollama_model,
+                "local_model": config.local_model,
+                "local_base_url": config.local_base_url,
                 "custom_base_url": config.custom_base_url,
                 "custom_api_key": config.custom_api_key,
                 "custom_model": config.custom_model
@@ -122,6 +125,8 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._json_response(self._get_template_engine().list_prompts())
         elif path == "/api/has-key":
             self._json_response({"has_key": config.has_active_key(), "engine": config.engine})
+        elif path == "/api/local-status":
+            self._json_response(model_info())
         elif path == "/api/proxy-models":
             base_url = parse_qs(parsed.query).get("url", [None])[0]
             api_key = parse_qs(parsed.query).get("key", [None])[0]
@@ -305,7 +310,7 @@ class APIHandler(SimpleHTTPRequestHandler):
                 self._json_response({"error": f"不支持的格式: {fmt}"}, 400)
         elif path == "/api/switch-engine":
             engine = body.get("engine", "")
-            if engine not in ["deepseek", "greenapi", "ollama", "custom"]:
+            if engine not in ["deepseek", "greenapi", "ollama", "custom", "local"]:
                 self._json_response({"error": f"不支持的引擎: {engine}"}, 400)
                 return
             config.engine = engine
@@ -318,6 +323,9 @@ class APIHandler(SimpleHTTPRequestHandler):
                 config.greenapi_model = body.get("model", config.greenapi_model)
             elif engine == "ollama":
                 config.ollama_model = body.get("model", config.ollama_model)
+            elif engine == "local":
+                config.local_model = body.get("model", config.local_model)
+                config.local_base_url = body.get("base_url", config.local_base_url)
             elif engine == "custom":
                 config.custom_base_url = body.get("base_url", config.custom_base_url)
                 config.custom_api_key = body.get("api_key", config.custom_api_key)

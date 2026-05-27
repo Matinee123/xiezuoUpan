@@ -110,6 +110,7 @@
           <option value="deepseek">DeepSeek (云端，中文首选)</option>
           <option value="greenapi">Green-API (API 中转)</option>
           <option value="ollama">Ollama (本地离线)</option>
+          <option value="local">本地模型 (U盘内置)</option>
           <option value="custom">自定义 API</option>
         </select>
       </div>
@@ -126,6 +127,11 @@
       <div id="fieldsOllama" class="engine-fields" style="display:none">
         <div class="form-group"><label>接口地址</label><div class="readonly-url">http://localhost:11434/v1</div><div class="form-hint">本地 Ollama 服务地址</div></div>
         <div class="form-group"><label>模型名称</label><input type="text" id="ollamaModel" placeholder="qwen2.5:latest" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">已安装的模型名</div></div>
+      </div>
+      <div id="fieldsLocal" class="engine-fields" style="display:none">
+        <div class="form-group"><label>接口地址</label><div class="readonly-url">http://127.0.0.1:8088/v1</div><div class="form-hint">U盘内置 llama-server 服务地址</div></div>
+        <div class="form-group"><label>模型状态</label><div id="localModelStatus" style="padding:10px;background:var(--bg4);border-radius:6px;font-size:13px;color:var(--text-dim);">检测中...</div></div>
+        <div class="form-hint">将 .gguf 模型文件放入 _models/ 目录即可离线使用</div>
       </div>
       <div id="fieldsCustom" class="engine-fields" style="display:none">
         <div class="form-group"><label>API 地址</label><input type="text" id="customBaseUrl" placeholder="https://your-api.com/v1" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">兼容 OpenAI 格式的接口地址</div></div>

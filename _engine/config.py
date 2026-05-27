@@ -17,6 +17,8 @@ class Config:
         self.greenapi_model = "gpt-4o-mini"
         self.ollama_base_url = "http://localhost:11434/v1"
         self.ollama_model = "qwen2.5:latest"
+        self.local_base_url = "http://127.0.0.1:8088/v1"
+        self.local_model = ""  # Auto-detect from gguf file
         self.custom_api_key = ""
         self.custom_base_url = ""
         self.custom_model = ""
@@ -57,6 +59,10 @@ class Config:
                 self.ollama_base_url = value
             elif key == "OLLAMA_MODEL":
                 self.ollama_model = value
+            elif key == "LOCAL_BASE_URL":
+                self.local_base_url = value
+            elif key == "LOCAL_MODEL":
+                self.local_model = value
             elif key == "CUSTOM_API_KEY":
                 self.custom_api_key = value
             elif key == "CUSTOM_BASE_URL":
@@ -130,6 +136,12 @@ PORT=8080
                 "base_url": self.ollama_base_url,
                 "model": self.ollama_model
             }
+        elif self.engine == "local":
+            return {
+                "api_key": "local",
+                "base_url": self.local_base_url,
+                "model": self.local_model or "local-model"
+            }
         elif self.engine == "custom":
             return {
                 "api_key": self.custom_api_key,
@@ -137,6 +149,14 @@ PORT=8080
                 "model": self.custom_model
             }
         return None
+
+    def has_active_key(self):
+        if self.engine in ("ollama", "local"):
+            return True
+        cfg = self.get_active_config()
+        if cfg is None:
+            return False
+        return bool(cfg.get("api_key", "").strip())
 
     def has_active_key(self):
         if self.engine == "ollama":

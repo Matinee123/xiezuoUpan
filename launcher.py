@@ -34,6 +34,21 @@ def main():
     except ImportError:
         print("  [..] reportlab 未安装")
 
+    # 检测本地模型
+    print()
+    print("[1.5/3] 检测本地离线模型...")
+    from _engine.local_llm import model_info, start_server
+    info = model_info()
+    if info["available"]:
+        print(f"  [OK] 发现模型: {Path(info['model_path']).name}")
+        ok, msg = start_server(info["model_path"])
+        print(f"  [{('OK' if ok else '!!')}] {msg}")
+        if ok:
+            engine_changed = False
+    else:
+        print("  [..] 未发现离线模型，仅可使用云端引擎")
+        print("  下载模型文件(.gguf)放入 _models/ 目录即可离线使用")
+
     # 检查配置
     print()
     print("[2/3] 检查配置...")
