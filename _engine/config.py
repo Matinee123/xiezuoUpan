@@ -13,7 +13,7 @@ class Config:
         self.openai_api_key = ""
         self.openai_base_url = "https://api.openai.com/v1"
         self.greenapi_api_key = ""
-        self.greenapi_base_url = "https://api.martin007.top"
+        self.greenapi_base_url = "https://api.martin007.top/v1"
         self.greenapi_model = "gpt-4o-mini"
         self.ollama_base_url = "http://localhost:11434/v1"
         self.ollama_model = "qwen2.5:latest"
@@ -87,7 +87,7 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 
 # Green-API (稳定 API 中转)
 GREENAPI_API_KEY=
-GREENAPI_BASE_URL=https://api.martin007.top
+GREENAPI_BASE_URL=https://api.martin007.top/v1
 GREENAPI_MODEL=gpt-4o-mini
 
 # Ollama 本地模型 (离线使用)
