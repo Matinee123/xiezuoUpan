@@ -14,10 +14,21 @@ local_process = None
 
 def find_model():
     """在 _models/ 目录下查找 gguf 文件"""
+    ggufs = list_models()
+    return str(MODELS_DIR / ggufs[0]["file"]) if ggufs else None
+
+def list_models():
+    """列出所有可用的 gguf 模型"""
     if not MODELS_DIR.exists():
-        return None
-    ggufs = sorted(MODELS_DIR.glob("*.gguf"))
-    return str(ggufs[0]) if ggufs else None
+        return []
+    result = []
+    for f in sorted(MODELS_DIR.glob("*.gguf")):
+        result.append({
+            "file": f.name,
+            "name": f.stem,
+            "size_mb": round(f.stat().st_size / (1024*1024), 1)
+        })
+    return result
 
 def is_running():
     """检查本地模型是否在运行"""

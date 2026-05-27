@@ -12,7 +12,7 @@ from .llm import call_llm, LLMError
 from .export import export_markdown, export_html, export_wechat_html, export_docx, export_pdf
 from .template import TemplateEngine
 from .updater import check_update, apply_update
-from .local_llm import model_info, start_server, stop_server, is_running
+from .local_llm import model_info, start_server, stop_server, is_running, list_models, find_model, MODELS_DIR
 
 HERE = Path(__file__).resolve().parent.parent
 
@@ -127,6 +127,8 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._json_response({"has_key": config.has_active_key(), "engine": config.engine})
         elif path == "/api/local-status":
             self._json_response(model_info())
+        elif path == "/api/local-models":
+            self._json_response(list_models())
         elif path == "/api/proxy-models":
             base_url = parse_qs(parsed.query).get("url", [None])[0]
             api_key = parse_qs(parsed.query).get("key", [None])[0]
@@ -314,7 +316,12 @@ class APIHandler(SimpleHTTPRequestHandler):
                 self._json_response({"error": f"不支持的引擎: {engine}"}, 400)
                 return
             if engine == "local" and not is_running():
-                ok, msg = start_server()
+                mname = body.get("model", "")
+                if mname:
+                    mp = str(MODELS_DIR / (mname + ".gguf" if not mname.endswith(".gguf") else mname))
+                else:
+                    mp = str(MODELS_DIR / find_model())
+                ok, msg = start_server(mp if mname else None)
                 if not ok:
                     self._json_response({"error": f"本地模型启动失败: {msg}", "engine": config.engine}, 500)
                     return
