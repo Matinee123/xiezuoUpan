@@ -1,1 +1,10 @@
-{"version": "1.0.0", "build": 1, "release_date": "2026-05-26", "min_compatible_version": "1.0.0", "update_url": "https://api.github.com/repos/Matinee123/xiezuoUpan/releases/latest", "changelog": {"1.0.0": "首发版：8个行业57个模板、写作向导、AI对话、微信公众号导出"}}
+﻿{
+  "version": "1.0.0",
+  "build": 1,
+  "release_date": "2026-05-26",
+  "min_compatible_version": "1.0.0",
+  "update_url": "https://api.github.com/repos/anomalyco/xiezuoUpan/releases/latest",
+  "changelog": {
+    "1.0.0": "首个版本：核心引擎 + 通用写作 MVP，支持 AI 对话写作、文档管理、Markdown/HTML 导出"
+  }
+}

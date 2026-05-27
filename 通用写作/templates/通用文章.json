@@ -1,1 +1,9 @@
-{"name":"通用文章","description":"自由创作，适合各类日常写作","fields":[{"id":"topic","label":"写作主题","hint":"你想写什么，一句话描述","required":true},{"id":"style","label":"写作风格","hint":"正式/亲切/学术/活泼等"},{"id":"points","label":"关键要点","hint":"必须包含的内容，可分条写"}]}
+﻿{
+  "name": "通用文章",
+  "description": "适用于大多数写作场景的通用模板",
+  "system_prompt": "你是一位专业的写作助手。请根据用户的需求撰写一篇结构完整、语言流畅的文章。文章要有标题、正文分段，语气自然得体。",
+  "structure": {
+    "title": "标题",
+    "body": "正文内容"
+  }
+}

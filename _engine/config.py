@@ -11,9 +11,6 @@ class Config:
         self.deepseek_base_url = "https://api.deepseek.com"
         self.openai_api_key = ""
         self.openai_base_url = "https://api.openai.com/v1"
-        self.greenapi_api_key = ""
-        self.greenapi_base_url = "https://api.martin007.top"
-        self.greenapi_model = "gpt-4o-mini"
         self.ollama_base_url = "http://localhost:11434/v1"
         self.ollama_model = "qwen2.5:latest"
         self.custom_api_key = ""
@@ -44,12 +41,6 @@ class Config:
                 self.openai_api_key = value
             elif key == "OPENAI_BASE_URL":
                 self.openai_base_url = value
-            elif key == "GREENAPI_API_KEY":
-                self.greenapi_api_key = value
-            elif key == "GREENAPI_BASE_URL":
-                self.greenapi_base_url = value
-            elif key == "GREENAPI_MODEL":
-                self.greenapi_model = value
             elif key == "OLLAMA_BASE_URL":
                 self.ollama_base_url = value
             elif key == "OLLAMA_MODEL":
@@ -81,11 +72,6 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 OPENAI_API_KEY=
 OPENAI_BASE_URL=https://api.openai.com/v1
 
-# Green-API (稳定 API 中转)
-GREENAPI_API_KEY=
-GREENAPI_BASE_URL=https://api.martin007.top
-GREENAPI_MODEL=gpt-4o-mini
-
 # Ollama 本地模型 (离线使用)
 OLLAMA_BASE_URL=http://localhost:11434/v1
 OLLAMA_MODEL=qwen2.5:latest
@@ -114,12 +100,6 @@ PORT=8080
                 "base_url": self.openai_base_url,
                 "model": "gpt-4o-mini"
             }
-        elif self.engine == "greenapi":
-            return {
-                "api_key": self.greenapi_api_key,
-                "base_url": self.greenapi_base_url,
-                "model": self.greenapi_model
-            }
         elif self.engine == "ollama":
             return {
                 "api_key": "ollama",
@@ -133,48 +113,5 @@ PORT=8080
                 "model": self.custom_model
             }
         return None
-
-    def has_active_key(self):
-        """检查当前引擎是否已配置有效的 API Key"""
-        if self.engine == "ollama":
-            return True
-        cfg = self.get_active_config()
-        if cfg is None:
-            return False
-        return bool(cfg.get("api_key", "").strip())
-
-    def to_env_text(self):
-        """将当前配置序列化为 .env.local 格式"""
-        return f"""# AI 写作工作台 - 配置
-# 不使用的项目留空即可
-
-# 引擎选择: deepseek / openai / ollama / custom
-ENGINE={self.engine}
-
-# DeepSeek (默认，中文写作首选)
-DEEPSEEK_API_KEY={self.deepseek_api_key}
-DEEPSEEK_BASE_URL={self.deepseek_base_url}
-
-# OpenAI 兼容 (支持 GPT、Claude 等)
-OPENAI_API_KEY={self.openai_api_key}
-OPENAI_BASE_URL={self.openai_base_url}
-
-# Green-API (稳定 API 中转)
-GREENAPI_API_KEY={self.greenapi_api_key}
-GREENAPI_BASE_URL={self.greenapi_base_url}
-GREENAPI_MODEL={self.greenapi_model}
-
-# Ollama 本地模型 (离线使用)
-OLLAMA_BASE_URL={self.ollama_base_url}
-OLLAMA_MODEL={self.ollama_model}
-
-# 自定义 API (任何兼容 OpenAI 接口的服务)
-CUSTOM_API_KEY={self.custom_api_key}
-CUSTOM_BASE_URL={self.custom_base_url}
-CUSTOM_MODEL={self.custom_model}
-
-# 服务端口
-PORT={self.port}
-"""
 
 config = Config()

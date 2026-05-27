@@ -1,217 +1,125 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI 写作工作台</title>
+<title>AI 写作工作台 - 通用版</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
-
-  <!-- ====== 首页：版本选择卡片 ====== -->
-  <div id="homePage">
-    <div class="home-header">
-      <h1 class="home-title">AI 写作工作台</h1>
-      <p class="home-subtitle">选择写作类型，AI 帮您高效完成</p>
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1 class="logo">AI 写作工作台</h1>
+      <span class="version-badge" id="versionBadge">v1.0.0</span>
     </div>
-    <div class="card-grid" id="cardGrid"></div>
-    <div class="home-footer">
-      <span class="version-badge" id="verBadge">v1.0.0</span>
-      <button class="btn btn-sm" onclick="showUpgrade()" title="检查系统更新">🔄 升级</button>
-      <button class="btn btn-sm" onclick="showSettings()" title="修改 AI 引擎、API 密钥等配置">⚙ 设置</button>
+    <div class="topbar-center">
+      <span id="engineStatus" class="engine-badge">引擎: deepseek</span>
     </div>
-  </div>
+    <div class="topbar-right">
+      <button class="btn btn-sm" onclick="showSettings()">⚙ 设置</button>
+      <button class="btn btn-sm" onclick="showExport()">📤 导出</button>
+    </div>
+  </header>
 
-  <!-- ====== 编辑器页面 ====== -->
-  <div id="editorPage" style="display:none">
-    <header class="topbar">
-      <div class="topbar-left">
-        <button class="btn btn-sm" onclick="goHome()" title="返回首页">← 首页</button>
-        <h1 class="logo" id="verTitle">AI 写作工作台</h1>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span>📁 文档</span>
+        <button class="btn btn-xs" onclick="newDoc()">+ 新建</button>
       </div>
-      <div class="topbar-center">
-        <span id="engineStatus" class="engine-badge" title="当前使用的 AI 引擎，可在设置中切换">引擎: deepseek</span>
+      <div class="doc-list" id="docList"></div>
+    </aside>
+
+    <main class="main-area">
+      <div class="editor-toolbar">
+        <span class="doc-title">
+          <input type="text" id="docTitle" value="未命名文档" placeholder="输入标题...">
+        </span>
+        <div class="toolbar-actions">
+          <button class="btn btn-sm" onclick="saveDoc()">💾 保存</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteDoc()">🗑 删除</button>
+        </div>
       </div>
-      <div class="topbar-right">
-        <button class="btn btn-sm" onclick="showSettings()" title="修改 AI 引擎、API 密钥等配置">⚙ 设置</button>
-        <button class="btn btn-sm" onclick="showExport()" title="导出为 Markdown 或 HTML 文件">📤 导出</button>
-      </div>
-    </header>
 
-    <div class="layout">
-      <aside class="sidebar" id="sidebar">
-        <div class="sidebar-tabs">
-          <button class="sidebar-tab active" onclick="switchSidebar('wizard')" id="tabWizard">📋 写作向导</button>
-          <button class="sidebar-tab" onclick="switchSidebar('docs')" id="tabDocs">📁 文档</button>
-        </div>
-
-        <div id="wizardPanel" class="wizard-panel">
-          <div class="wizard-section">
-            <label class="wizard-label">选择模板</label>
-            <select id="templateSelect" onchange="onTemplateChange()" class="wizard-select">
-              <option value="">自由写作</option>
-            </select>
-          </div>
-          <div id="wizardFields" class="wizard-fields"></div>
-          <button class="btn btn-primary wizard-btn" onclick="aiGenerateWizard()" id="wizardGenerateBtn" style="display:none">🤖 智能生成</button>
-        </div>
-
-        <div id="docsPanel" class="docs-panel" style="display:none">
-          <div class="sidebar-header">
-            <span>📁 文档</span>
-            <button class="btn btn-xs" onclick="newDoc()" title="新建空白文档">+ 新建</button>
-          </div>
-          <div class="doc-list" id="docList"></div>
-        </div>
-      </aside>
-      <div class="resize-handle" id="resizeLeft" title="拖拽调整文档列宽度"></div>
-      <main class="main-area">
-        <div class="editor-toolbar">
-          <span class="doc-title">
-            <input type="text" id="docTitle" value="未命名文档" placeholder="输入文章标题..." title="在此输入文章标题" autocomplete="off">
-          </span>
-          <div class="toolbar-actions">
-            <button class="btn btn-sm" onclick="previewDoc()" title="弹窗预览渲染效果">👁 预览</button>
-            <button class="btn btn-sm" onclick="saveDoc()" title="保存文档 (快捷键 Ctrl+S)">💾 保存</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteDoc()" title="删除当前文档，不可恢复">🗑 删除</button>
+      <div class="editor-container">
+        <div class="editor-pane">
+          <div class="pane-header">编辑区</div>
+          <textarea id="editor" placeholder="在此输入或粘贴内容，或使用 AI 生成..."></textarea>
+          <div class="editor-actions">
+            <button class="btn btn-primary" onclick="aiGenerate()">🤖 AI 生成</button>
+            <button class="btn" onclick="aiContinue()">📝 续写</button>
+            <button class="btn" onclick="aiRewrite()">✂️ 改写</button>
           </div>
         </div>
-        <textarea id="editor" placeholder="在此输入或粘贴内容，使用下方按钮调用 AI 帮您写作..." title="在此输入或粘贴内容，使用下方按钮调用 AI 帮您写作"></textarea>
-        <div class="editor-actions">
-          <button class="btn btn-primary" onclick="aiGenerate()" title="根据编辑区内容生成一篇完整文章">🤖 AI 生成</button>
-          <button class="btn" onclick="aiContinue()" title="在现有内容后面继续写作">📝 续写</button>
-          <button class="btn" onclick="aiRewrite()" title="按指定风格改写当前文章">✂️ 改写</button>
+        <div class="preview-pane">
+          <div class="pane-header">预览</div>
+          <div id="preview" class="preview-content"></div>
         </div>
-      </main>
-      <div class="resize-handle" id="resizeRight" title="拖拽调整 AI 面板宽度"></div>
-      <aside class="ai-sidebar" id="aiPanel">
-        <div class="ai-panel-header" onclick="toggleAIPanel()" title="点击收起/展开">
+      </div>
+
+      <div class="ai-panel" id="aiPanel">
+        <div class="ai-panel-header">
           <span>💬 AI 对话</span>
-          <button class="btn btn-xs" id="aiToggleBtn" title="点击收起或展开 AI 对话面板">收起 ▲</button>
+          <button class="btn btn-xs" onclick="toggleAIPanel()">收起</button>
         </div>
-        <div class="ai-panel-body" id="aiPanelBody">
-          <div class="ai-messages" id="aiMessages"></div>
-          <div class="ai-input-row">
-            <input type="text" id="aiInput" placeholder="给 AI 下达写作指令..." title="输入写作指令，按回车键发送" onkeydown="if(event.key==='Enter') aiChat()">
-            <button class="btn btn-primary btn-sm" onclick="aiChat()" title="发送指令给 AI">发送</button>
-          </div>
+        <div class="ai-messages" id="aiMessages"></div>
+        <div class="ai-input-row">
+          <input type="text" id="aiInput" placeholder="给 AI 下达写作指令..." onkeydown="if(event.key==='Enter') aiChat()">
+          <button class="btn btn-primary btn-sm" onclick="aiChat()">发送</button>
         </div>
-      </aside>
-    </div>
-  </div>
-
-</div>
-
-<!-- ====== 弹窗 ====== -->
-<div id="previewModal" class="modal-overlay" style="display:none">
-  <div class="modal preview-modal">
-    <div class="modal-header"><h2>预览</h2><button class="btn btn-xs" onclick="closePreview()" title="关闭预览">✕</button></div>
-    <div class="modal-body"><div id="previewContent" class="preview-body"></div></div>
-    <div class="modal-footer"><button class="btn" onclick="closePreview()">关闭</button></div>
+      </div>
+    </main>
   </div>
 </div>
 
 <div id="settingsModal" class="modal-overlay" style="display:none">
   <div class="modal">
-    <div class="modal-header"><h2>设置</h2><button class="btn btn-xs" onclick="closeSettings()" title="关闭设置">✕</button></div>
+    <div class="modal-header">
+      <h2>⚙ 设置</h2>
+      <button class="btn btn-xs" onclick="closeSettings()">✕</button>
+    </div>
     <div class="modal-body">
       <div class="form-group">
         <label>AI 引擎</label>
-        <select id="engineSelect" onchange="onEngineChange()">
+        <select id="engineSelect">
           <option value="deepseek">DeepSeek (云端，中文首选)</option>
-          <option value="greenapi">Green-API (API 中转)</option>
+          <option value="openai">OpenAI 兼容 (GPT/Claude 等)</option>
           <option value="ollama">Ollama (本地离线)</option>
           <option value="custom">自定义 API</option>
         </select>
       </div>
-      <div id="fieldsDeepseek" class="engine-fields" style="display:none">
-        <div class="form-group"><label>接口地址</label><div class="readonly-url">https://api.deepseek.com</div><div class="form-hint">DeepSeek 官方接口地址，无需修改</div></div>
-        <div class="form-group"><label>API 密钥</label><input type="password" id="deepseekApiKey" placeholder="sk-xxxxxxxxxxxxxxxx" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">前往 platform.deepseek.com 注册获取 API Key</div></div>
-      </div>
-      <div id="fieldsGreenapi" class="engine-fields" style="display:none">
-        <div class="form-group"><label>接口地址</label><div class="readonly-url">https://api.martin007.top</div><div class="form-hint">Green-API 中转服务地址</div></div>
-        <div class="form-group"><label>API 密钥</label><input type="password" id="greenapiApiKey" placeholder="sk-xxxxxxxxxxxxxxxx" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">填写 Green-API 的密钥</div></div>
-      </div>
-      <div id="fieldsOllama" class="engine-fields" style="display:none">
-        <div class="form-group"><label>接口地址</label><div class="readonly-url">http://localhost:11434/v1</div><div class="form-hint">本地 Ollama 服务地址，无需修改</div></div>
-        <div class="form-group"><label>模型名称</label><input type="text" id="ollamaModel" placeholder="qwen2.5:latest" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">本地已安装的模型名称，用 ollama list 查看</div></div>
-      </div>
-      <div id="fieldsCustom" class="engine-fields" style="display:none">
-        <div class="form-group"><label>API 地址</label><input type="text" id="customBaseUrl" placeholder="https://your-api.com/v1" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">填写 AI 服务商的接口地址，兼容 OpenAI 格式即可</div></div>
-        <div class="form-group"><label>API 密钥</label><input type="password" id="customApiKey" placeholder="sk-xxxxxxxxxxxxxxxx" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">填写从服务商获取的密钥 (API Key)，用于身份认证</div></div>
-        <div class="form-group"><label>模型名称</label><input type="text" id="customModel" placeholder="gpt-4o-mini" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">填写要调用的模型名称，如 gpt-4o-mini、deepseek-chat 等</div></div>
+      <div class="form-group" id="apiKeyGroup" style="display:none">
+        <label>自定义 API Key</label>
+        <input type="password" id="customApiKey" placeholder="输入 API Key...">
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-primary" onclick="saveSettings()" title="保存当前引擎设置">保存</button>
-      <button class="btn" onclick="closeSettings()" title="放弃修改，关闭窗口">取消</button>
+      <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+      <button class="btn" onclick="closeSettings()">取消</button>
     </div>
   </div>
 </div>
 
 <div id="exportModal" class="modal-overlay" style="display:none">
   <div class="modal">
-    <div class="modal-header"><h2>导出</h2><button class="btn btn-xs" onclick="closeExport()" title="关闭导出窗口">✕</button></div>
+    <div class="modal-header">
+      <h2>📤 导出</h2>
+      <button class="btn btn-xs" onclick="closeExport()">✕</button>
+    </div>
     <div class="modal-body">
       <p>选择导出格式：</p>
       <div class="export-options">
-        <button class="btn btn-export" onclick="doExport('markdown')" title="导出为纯文本 Markdown 格式">📄 Markdown</button>
-        <button class="btn btn-export" onclick="doExport('html')" title="导出为网页 HTML 格式">🌐 HTML</button>
-        <button class="btn btn-export" onclick="showWechatStyle()" title="导出为微信公众号 HTML(全内联样式)">📱 微信公众号</button>
-      </div>
-      <div id="wechatStylePanel" style="display:none; margin-top:16px;">
-        <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">选择排版风格：</p>
-        <div class="style-grid">
-          <div class="style-card" onclick="doExport('wechat','business')">💼 极简商务风</div>
-          <div class="style-card" onclick="doExport('wechat','literary')">🌸 文艺清新风</div>
-          <div class="style-card" onclick="doExport('wechat','tech')">💻 科技专业风</div>
-          <div class="style-card" onclick="doExport('wechat','youth')">🎉 活力年轻风</div>
-          <div class="style-card" onclick="doExport('wechat','official')">🏛 官方正式风</div>
-        </div>
+        <button class="btn btn-export" onclick="doExport('markdown')">📄 Markdown</button>
+        <button class="btn btn-export" onclick="doExport('html')">🌐 HTML</button>
       </div>
       <div id="exportResult" style="display:none; margin-top:16px;">
-        <textarea id="exportContent" rows="10" readonly style="display:none;"></textarea>
-        <div id="exportPreviewWrap" class="export-preview-wrap">
-          <iframe id="exportPreview" class="export-preview-iframe" sandbox="allow-same-origin"></iframe>
-        </div>
-        <button class="btn btn-primary" onclick="copyExport()" style="margin-top:8px;" title="复制 HTML 源代码到剪贴板">📋 复制 HTML 代码到剪贴板</button>
-      </div>
-    </div>
-    <div class="modal-footer"><button class="btn" onclick="closeExport()" title="关闭导出窗口">关闭</button></div>
-  </div>
-</div>
-
-<div id="upgradeModal" class="modal-overlay" style="display:none">
-  <div class="modal">
-    <div class="modal-header"><h2>🔄 系统升级</h2><button class="btn btn-xs" onclick="closeUpgrade()" title="关闭">✕</button></div>
-    <div class="modal-body">
-      <p style="font-size:14px;">当前版本: <strong id="upgCurrent">v1.0.0</strong></p>
-      <div id="upgNoUpdate" style="margin-top:12px;text-align:center;">
-        <p style="color:var(--green);font-size:15px;">✅ 已是最新版本</p>
-      </div>
-      <div id="upgHasUpdate" style="display:none;">
-        <p style="margin-top:8px;">最新版本: <strong id="upgLatest" style="color:var(--accent)">-</strong></p>
-        <div id="upgChangelog" style="max-height:200px;overflow-y:auto;margin:12px 0;padding:12px;background:var(--bg4);border-radius:8px;font-size:13px;line-height:1.6;white-space:pre-wrap;"></div>
-        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:12px;margin-bottom:12px;">
-          <p style="font-size:13px;color:var(--red);font-weight:600;margin-bottom:8px;">⚠️ 升级前请注意</p>
-          <p style="font-size:12px;color:var(--text-dim);line-height:1.6;">升级不会删除您的文档。但建议将以下内容复制备份：</p>
-          <p style="font-size:12px;color:var(--text-dim);"><code>_data/</code> 文件夹（您的所有文档）<br><code>.env.local</code> 文件（API 密钥配置）</p>
-          <p style="font-size:12px;color:var(--text-dim);">备份方法：复制这两个文件/夹到 U盘其他位置</p>
-        </div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:12px;">
-          <input type="checkbox" id="upgConfirm" onchange="toggleUpgradeBtn()"> 我已完成备份，确认升级
-        </label>
-        <div id="upgProgress" style="display:none;margin:8px 0;">
-          <div style="background:var(--bg4);border-radius:4px;height:6px;overflow:hidden;"><div id="upgBar" style="background:var(--accent);height:100%;width:0;transition:width 0.3s;"></div></div>
-          <p id="upgStatus" style="font-size:12px;color:var(--text-dim);margin-top:4px;"></p>
-        </div>
+        <textarea id="exportContent" rows="10" readonly style="width:100%;background:#1a1a2e;color:#e0e0e0;border:1px solid #333;border-radius:8px;padding:12px;font-family:monospace;font-size:13px;"></textarea>
+        <button class="btn btn-primary" onclick="copyExport()" style="margin-top:8px;">📋 复制</button>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeUpgrade()">关闭</button>
-      <button class="btn btn-primary" id="upgCheckBtn" onclick="checkUpdate()">🔍 检查更新</button>
-      <button class="btn btn-primary" id="upgApplyBtn" onclick="doUpgrade()" style="display:none;opacity:0.4;" disabled>⬆ 一键升级</button>
+      <button class="btn" onclick="closeExport()">关闭</button>
     </div>
   </div>
 </div>

@@ -11,7 +11,7 @@ class TemplateEngine:
         if self.templates_dir.exists():
             for f in sorted(self.templates_dir.glob("*.json")):
                 try:
-                    data = json.loads(f.read_text(encoding="utf-8-sig"))
+                    data = json.loads(f.read_text(encoding="utf-8"))
                     templates.append({
                         "name": data.get("name", f.stem),
                         "file": f.name,
@@ -48,7 +48,7 @@ class TemplateEngine:
             template_file = self.templates_dir / name
         if not template_file.exists():
             return None
-        return json.loads(template_file.read_text(encoding="utf-8-sig"))
+        return json.loads(template_file.read_text(encoding="utf-8"))
 
     def render_prompt(self, prompt_text, variables):
         """将变量替换到提示词模板中"""
