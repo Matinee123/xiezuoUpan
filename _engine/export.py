@@ -3,7 +3,13 @@ import re
 
 def export_markdown(title, content):
     """导出 Markdown 格式"""
-    return f"# {title}\n\n{content}"
+    stripped = content.strip()
+    if stripped.startswith('# '):
+        # 内容自带标题，跳过第一行用编辑器标题覆盖
+        idx = stripped.find('\n')
+        body = stripped[idx+1:].strip() if idx > 0 else ''
+        return f"# {title}\n\n{body}"
+    return f"# {title}\n\n{stripped}"
 
 def export_html(title, content):
     """导出 HTML 格式"""

@@ -343,10 +343,11 @@ async function doExport(format, style) {
     if (data.content) {
       document.getElementById("exportContent").value = data.content;
       document.getElementById("exportResult").style.display = "block";
-      if (format === 'wechat' || format === 'html') {
+      if (format === 'wechat') {
         var iframe = document.getElementById("exportPreview");
         iframe.srcdoc = data.content;
         document.getElementById("exportPreviewWrap").style.display = "block";
+        document.getElementById("exportContent").style.display = "none";
       } else {
         document.getElementById("exportPreviewWrap").style.display = "none";
         document.getElementById("exportContent").style.display = "block";
