@@ -1,0 +1,1 @@
+{ "name":"通用文章","description":"自由创作，适合各类日常写作","fields":[{"id":"topic","label":"写作主题","hint":"你想写什么，一句话描述","required":true},{"id":"style","label":"写作风格","hint":"正式/亲切/学术/活泼等"},{"id":"points","label":"关键要点","hint":"必须包含的内容，可分条写"}] }

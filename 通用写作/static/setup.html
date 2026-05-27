@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 写作工作台 - 初始配置</title>
+<style>
+:root {
+  --bg: #06060e; --bg2: #0d0d18; --bg3: #151525; --bg4: #1e1e35;
+  --text: #e0e0e0; --text-dim: #888; --text-bright: #fff;
+  --accent: #6366f1; --accent-hover: #818cf8; --accent-glow: rgba(99,102,241,0.3);
+  --border: rgba(255,255,255,0.08); --radius: 12px; --radius-sm: 8px;
+  --green: #10b981; --green-bg: rgba(16,185,129,0.1);
+  --red: #ef4444;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Inter","Microsoft YaHei","PingFang SC",sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.container { max-width: 520px; width: 100%; }
+.header { text-align: center; margin-bottom: 32px; }
+.logo {
+  font-size: 28px; font-weight: 800;
+  background: linear-gradient(135deg, #6366f1, #a78bfa);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.subtitle { font-size: 14px; color: var(--text-dim); margin-top: 8px; }
+.card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px; margin-bottom: 16px;
+}
+.card-title { font-size: 16px; font-weight: 600; color: var(--text-bright); margin-bottom: 16px; }
+.engine-option {
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 10px;
+  cursor: pointer; transition: all 0.2s;
+}
+.engine-option:hover { border-color: var(--accent); background: rgba(99,102,241,0.05); }
+.engine-option.active { border-color: var(--accent); background: rgba(99,102,241,0.1); }
+.engine-radio { 
+  width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border);
+  flex-shrink: 0; margin-top: 2px; position: relative;
+}
+.engine-option.active .engine-radio { border-color: var(--accent); background: var(--accent); }
+.engine-name { font-size: 14px; font-weight: 600; color: var(--text-bright); }
+.engine-desc { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.form-group { margin-top: 16px; }
+.form-group label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+.form-group input {
+  width: 100%; background: var(--bg4); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 14px; color: var(--text);
+  font-size: 14px; outline: none;
+}
+.form-group input:focus { border-color: var(--accent); }
+.form-hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+.form-hint a { color: var(--accent); text-decoration: none; }
+.form-hint a:hover { text-decoration: underline; }
+.btn {
+  width: 100%; padding: 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface);
+  color: var(--text); font-size: 15px; cursor: pointer; transition: all 0.2s;
+  margin-top: 8px;
+}
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.btn-primary:hover { background: var(--accent-hover); box-shadow: 0 0 16px var(--accent-glow); }
+.btn-skip { background: transparent; border: none; color: var(--text-dim); font-size: 13px; }
+.btn-skip:hover { color: var(--text); }
+.msg { text-align: center; font-size: 13px; padding: 10px; border-radius: var(--radius-sm); margin-bottom: 12px; display: none; }
+.msg-error { background: rgba(239,68,68,0.1); color: var(--red); }
+.msg-success { background: var(--green-bg); color: var(--green); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1 class="logo">AI 写作工作台</h1>
+    <p class="subtitle">开始前请先配置 AI 引擎，选一个你有的</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">选择 AI 引擎</div>
+
+    <div class="engine-option active" onclick="selectEngine('deepseek')" id="opt_deepseek">
+      <div class="engine-radio"></div>
+      <div>
+        <div class="engine-name">DeepSeek</div>
+        <div class="engine-desc">中文效果极佳，价格最低</div>
+      </div>
+    </div>
+
+    <div class="engine-option" onclick="selectEngine('greenapi')" id="opt_greenapi">
+      <div class="engine-radio"></div>
+      <div>
+        <div class="engine-name">Green-API</div>
+        <div class="engine-desc">稳定可靠的 API 中转服务</div>
+      </div>
+    </div>
+
+    <div class="engine-option" onclick="selectEngine('ollama')" id="opt_ollama">
+      <div class="engine-radio"></div>
+      <div>
+        <div class="engine-name">Ollama 本地</div>
+        <div class="engine-desc">完全离线，无网络也能用，需提前安装 Ollama 和模型</div>
+      </div>
+    </div>
+
+    <div class="engine-option" onclick="selectEngine('custom')" id="opt_custom">
+      <div class="engine-radio"></div>
+      <div>
+        <div class="engine-name">自定义 API</div>
+        <div class="engine-desc">使用你自己的 API 地址、密钥和模型名</div>
+      </div>
+    </div>
+
+    <div class="msg" id="msg"></div>
+
+    <!-- DeepSeek -->
+    <div id="form_deepseek" class="form-group">
+      <label>API 密钥</label>
+      <input type="password" id="key_deepseek" placeholder="sk-xxxxxxxxxxxxxxxx" readonly onfocus="this.removeAttribute('readonly')">
+      <div class="form-hint">🔗 <a href="https://platform.deepseek.com" target="_blank">点击这里免费注册获取 API Key</a></div>
+    </div>
+    <!-- Green-API -->
+    <div id="form_greenapi" class="form-group" style="display:none">
+      <label>API 密钥</label>
+      <input type="password" id="key_greenapi" placeholder="sk-xxxxxxxxxxxxxxxx" readonly onfocus="this.removeAttribute('readonly')">
+      <div class="form-hint">接口地址：https://api.martin007.top/</div>
+    </div>
+    <!-- Ollama -->
+    <div id="form_ollama" class="form-group" style="display:none">
+      <label>模型名称</label>
+      <input type="text" id="model_ollama" placeholder="qwen2.5:latest" readonly onfocus="this.removeAttribute('readonly')">
+      <div class="form-hint">请确认已安装 Ollama 并下载了模型。默认: qwen2.5</div>
+    </div>
+    <!-- Custom -->
+    <div id="form_custom" class="form-group" style="display:none">
+      <label>API 地址</label>
+      <input type="text" id="url_custom" placeholder="https://your-api.com/v1" readonly onfocus="this.removeAttribute('readonly')">
+      <div class="form-hint">任何兼容 OpenAI 格式的接口地址</div>
+      <label style="margin-top:12px;">API 密钥</label>
+      <input type="password" id="key_custom" placeholder="sk-xxxxxxxxxxxxxxxx" readonly onfocus="this.removeAttribute('readonly')">
+      <label style="margin-top:12px;">模型名称</label>
+      <input type="text" id="model_custom" placeholder="gpt-4o-mini" readonly onfocus="this.removeAttribute('readonly')">
+      <div class="form-hint">填写要调用的模型名称</div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="saveConfig()">💾 保存并开始使用</button>
+  <button class="btn btn-skip" onclick="skipSetup()">⏭ 暂时跳过，稍后再配置</button>
+</div>
+
+<script>
+function selectEngine(e) {
+  document.querySelectorAll('.engine-option').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById('opt_' + e).classList.add('active');
+  ['deepseek','greenapi','ollama','custom'].forEach(function(id) {
+    document.getElementById('form_' + id).style.display = (id === e) ? 'block' : 'none';
+  });
+}
+
+function showMsg(txt, cls) {
+  var m = document.getElementById('msg');
+  m.textContent = txt; m.className = 'msg msg-' + cls; m.style.display = 'block';
+}
+
+async function saveConfig() {
+  var engine = document.querySelector('.engine-option.active').id.replace('opt_','');
+  var body = { engine: engine };
+  if (engine === 'deepseek') body.api_key = document.getElementById('key_deepseek').value.trim();
+  else if (engine === 'greenapi') body.api_key = document.getElementById('key_greenapi').value.trim();
+  else if (engine === 'ollama') body.model = document.getElementById('model_ollama').value.trim();
+  else if (engine === 'custom') {
+    body.base_url = document.getElementById('url_custom').value.trim();
+    body.api_key = document.getElementById('key_custom').value.trim();
+    body.model = document.getElementById('model_custom').value.trim();
+  }
+  try {
+    var r = await fetch('/api/switch-engine', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    var d = await r.json();
+    if (d.ok) { showMsg('配置已保存，正在跳转...', 'success'); setTimeout(function(){ window.location.href = '/'; }, 800); }
+    else showMsg('保存失败: ' + (d.error || '未知错误'), 'error');
+  } catch(e) { showMsg('网络错误: ' + e.message, 'error'); }
+}
+
+function skipSetup() { window.location.href = '/'; }
+</script>
+</body>
+</html>

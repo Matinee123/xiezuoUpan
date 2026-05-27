@@ -1,0 +1,1 @@
+{"name":"通知","description":"发布需要下级机关或有关单位周知或执行的事项","fields":[{"id":"sender","label":"发文机关","hint":"填写发文单位全称","required":true},{"id":"receiver","label":"主送机关","hint":"通知发送给谁，如：各科室"},{"id":"reason","label":"通知事由","hint":"简述为什么发通知","required":true},{"id":"body","label":"通知事项","hint":"具体内容，可分条列举","required":true},{"id":"requirements","label":"执行要求","hint":"有哪些注意事项，如截止日期等"}]}

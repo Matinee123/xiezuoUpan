@@ -1,0 +1,9 @@
+_env/
+_data/
+.env.local
+__pycache__/
+*.pyc
+*.pyo
+_backup/
+_upgrade_tmp/
+*.whl
