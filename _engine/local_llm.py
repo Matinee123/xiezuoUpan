@@ -63,7 +63,8 @@ def start_server(model_path=None):
     try:
         local_process = subprocess.Popen(
             [exe, "-m", model_path, "--port", str(DEFAULT_PORT), "--host", "127.0.0.1", "-ngl", "0"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            cwd=str(MODELS_DIR)
         )
         # Wait for server to be ready
         for _ in range(30):

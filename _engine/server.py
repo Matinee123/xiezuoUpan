@@ -131,6 +131,10 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._json_response(list_models())
         elif path == "/api/install-llama":
             import zipfile, io, tempfile, shutil
+            # Check for model download option
+            opt = parse_qs(parsed.query).get("opt", ["runtime"])[0]
+            
+            # Step 1: Download llama-server
             url = "https://github.com/ggml-org/llama.cpp/releases/download/b9370/llama-b9370-bin-win-cpu-x64.zip"
             temp_zip = MODELS_DIR / "_llama_temp.zip"
             try:
@@ -140,11 +144,27 @@ class APIHandler(SimpleHTTPRequestHandler):
                 with zipfile.ZipFile(temp_zip, "r") as zf:
                     zf.extractall(MODELS_DIR)
                 temp_zip.unlink()
-                self._json_response({"ok": True, "message": "llama-server 安装完成"})
             except Exception as e:
                 if temp_zip.exists():
                     temp_zip.unlink()
-                self._json_response({"ok": False, "error": str(e)}, 500)
+                self._json_response({"ok": False, "error": f"llama-server下载失败: {e}"}, 500)
+                return
+
+            # Step 2: Download model if requested
+            if opt == "1.5b":
+                model_url = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+                model_path = MODELS_DIR / "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+                try:
+                    req = urllib.request.Request(model_url, headers={"User-Agent": "AI-Writing-Workstation"})
+                    resp = urllib.request.urlopen(req, timeout=1200)
+                    model_path.write_bytes(resp.read())
+                    self._json_response({"ok": True, "message": f"运行环境 + Qwen2.5-1.5B(~1GB) 安装完成"})
+                except Exception as e:
+                    if model_path.exists():
+                        model_path.unlink()
+                    self._json_response({"ok": True, "message": "llama-server安装完成(模型下载失败: {})".format(str(e)[:60])})
+            else:
+                self._json_response({"ok": True, "message": "llama-server 安装完成"})
         elif path == "/api/proxy-models":
             base_url = parse_qs(parsed.query).get("url", [None])[0]
             api_key = parse_qs(parsed.query).get("key", [None])[0]

@@ -131,9 +131,16 @@
       <div id="fieldsLocal" class="engine-fields" style="display:none">
         <div class="form-group"><label>接口地址</label><div class="readonly-url">http://127.0.0.1:8088/v1</div></div>
         <div class="form-group"><label>选择模型</label><select id="localModelSelect" class="wizard-select"><option value="">检测中...</option></select></div>
-        <button class="btn btn-primary wizard-btn" onclick="installLocalEnv()" id="installLocalBtn" style="margin-bottom:8px;">📦 一键安装离线运行环境</button>
-        <div id="installProgress" style="display:none;padding:8px;background:var(--bg4);border-radius:6px;font-size:12px;color:var(--text-dim);margin-bottom:8px;"></div>
-        <div class="form-hint">点击安装自动下载 llama-server (约50MB)<br>模型文件(.gguf)请手动放入 _models/ 目录</div>
+        <button class="btn btn-primary wizard-btn" onclick="showInstallOptions()" id="installLocalBtn">📦 一键安装离线环境</button>
+        <div id="installOptions" style="display:none;margin:8px 0;padding:10px;background:var(--bg4);border-radius:6px;">
+          <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:8px;">安装选项:</label>
+          <label style="display:block;font-size:12px;color:var(--text);margin-bottom:6px;cursor:pointer;"><input type="radio" name="installOpt" value="runtime" checked onchange="updateInstallBtn()"> 仅运行环境 (约50MB)</label>
+          <label style="display:block;font-size:12px;color:var(--text);margin-bottom:6px;cursor:pointer;"><input type="radio" name="installOpt" value="1.5b" onchange="updateInstallBtn()"> 运行环境 + Qwen2.5-1.5B (~1GB) 推荐</label>
+          <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:4px;cursor:pointer;"><input type="radio" name="installOpt" value="" onchange="updateInstallBtn()" disabled> 运行环境 + Qwen2.5-3B (~2GB) 即将支持</label>
+          <button class="btn btn-primary" onclick="installLocalEnv()" style="width:100%;margin-top:6px;padding:8px;font-size:13px;">⬇ 开始安装</button>
+        </div>
+        <div id="installProgress" style="display:none;padding:8px;background:var(--bg4);border-radius:6px;font-size:12px;color:var(--text-dim);margin:8px 0;"></div>
+        <div class="form-hint">点击安装自动下载运行环境和模型<br>需联网，仅首次需要</div>
       </div>
       <div id="fieldsCustom" class="engine-fields" style="display:none">
         <div class="form-group"><label>API 地址</label><input type="text" id="customBaseUrl" placeholder="https://your-api.com/v1" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">兼容 OpenAI 格式的接口地址</div></div>
