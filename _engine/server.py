@@ -1,8 +1,16 @@
 ﻿import json
+import mimetypes
+import socket
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+from urllib.parse import urlparse, parse_qs, unquote
 
 from .config import config
+from .docstore import docstore
+from .llm import call_llm, LLMError
+from .export import export_markdown, export_html, export_wechat_html
+from .template import TemplateEngine
+from .updater import check_update, apply_update
 from .docstore import docstore
 from .llm import call_llm, LLMError
 from .export import export_markdown, export_html
@@ -24,8 +32,19 @@ class APIHandler(SimpleHTTPRequestHandler):
         elif self.path == "/api/config":
             self._json_response({
                 "engine": config.engine,
-                "engines": ["deepseek", "openai", "ollama", "custom"]
+                "engines": ["deepseek", "greenapi", "ollama", "custom"],
+                "deepseek_api_key": config.deepseek_api_key,
+                "greenapi_api_key": config.greenapi_api_key,
+                "greenapi_model": config.greenapi_model,
+                "ollama_model": config.ollama_model,
+                "custom_base_url": config.custom_base_url,
+                "custom_api_key": config.custom_api_key,
+                "custom_model": config.custom_model
             })
+        elif self.path == "/api/has-key":
+            self._json_response({"has_key": config.has_active_key(), "engine": config.engine})
+        elif self.path == "/api/check-update":
+            self._json_response(check_update())
         elif self.path == "/api/documents":
             self._json_response(docstore.list())
         elif self.path.startswith("/api/documents/"):
@@ -42,7 +61,7 @@ class APIHandler(SimpleHTTPRequestHandler):
         elif self.path == "/api/version":
             version_file = HERE / "version.json"
             if version_file.exists():
-                self._json_response(json.loads(version_file.read_text(encoding="utf-8")))
+                self._json_response(json.loads(version_file.read_text(encoding="utf-8-sig")))
             else:
                 self._json_response({"version": "1.0.0"})
         else:
@@ -137,15 +156,41 @@ class APIHandler(SimpleHTTPRequestHandler):
             elif fmt == "html":
                 result = export_html(title, content)
                 self._json_response({"format": "html", "content": result})
+            elif fmt == "wechat":
+                style = body.get("style", "business")
+                result = export_wechat_html(title, content, style)
+                self._json_response({"format": "wechat", "content": result})
             else:
                 self._json_response({"error": f"不支持的格式: {fmt}"}, 400)
         elif self.path == "/api/switch-engine":
             engine = body.get("engine", "")
-            if engine in ["deepseek", "openai", "ollama", "custom"]:
-                config.engine = engine
-                self._json_response({"ok": True, "engine": engine})
-            else:
+            if engine not in ["deepseek", "greenapi", "ollama", "custom"]:
                 self._json_response({"error": f"不支持的引擎: {engine}"}, 400)
+                return
+            config.engine = engine
+            if engine == "deepseek":
+                config.deepseek_api_key = body.get("api_key", config.deepseek_api_key)
+            elif engine == "greenapi":
+                config.greenapi_api_key = body.get("api_key", config.greenapi_api_key)
+            elif engine == "ollama":
+                config.ollama_model = body.get("model", config.ollama_model)
+            elif engine == "custom":
+                config.custom_base_url = body.get("base_url", config.custom_base_url)
+                config.custom_api_key = body.get("api_key", config.custom_api_key)
+                config.custom_model = body.get("model", config.custom_model)
+            try:
+                env_file = HERE / ".env.local"
+                env_file.write_text(config.to_env_text(), encoding="utf-8")
+            except Exception:
+                pass
+            self._json_response({"ok": True, "engine": engine})
+        elif self.path == "/api/apply-update":
+            download_url = body.get("download_url", "")
+            if not download_url:
+                self._json_response({"error": "缺少下载地址"}, 400)
+                return
+            result = apply_update(download_url)
+            self._json_response(result)
         else:
             self._json_response({"error": "Not Found"}, 404)
 

@@ -7,7 +7,7 @@ echo    AI 写作工作台 v1.0.0
 echo    正在启动...
 echo.
 
-"%~dp0_env\Scripts\python.exe" "%~dp0launcher.py"
+"%~dp0_env\Scripts\python.exe" -B "%~dp0launcher.py"
 if errorlevel 1 (
     echo.
     echo [错误] 启动失败
