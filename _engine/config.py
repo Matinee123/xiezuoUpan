@@ -9,6 +9,7 @@ class Config:
         self.engine = "deepseek"
         self.deepseek_api_key = ""
         self.deepseek_base_url = "https://api.deepseek.com"
+        self.deepseek_model = "deepseek-chat"
         self.openai_api_key = ""
         self.openai_base_url = "https://api.openai.com/v1"
         self.greenapi_api_key = ""
@@ -40,6 +41,8 @@ class Config:
                 self.deepseek_api_key = value
             elif key == "DEEPSEEK_BASE_URL":
                 self.deepseek_base_url = value
+            elif key == "DEEPSEEK_MODEL":
+                self.deepseek_model = value
             elif key == "OPENAI_API_KEY":
                 self.openai_api_key = value
             elif key == "OPENAI_BASE_URL":
@@ -76,6 +79,7 @@ ENGINE=deepseek
 # DeepSeek (默认，中文写作首选)
 DEEPSEEK_API_KEY=
 DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
 
 # OpenAI 兼容 (支持 GPT、Claude 等)
 OPENAI_API_KEY=
@@ -106,7 +110,7 @@ PORT=8080
             return {
                 "api_key": self.deepseek_api_key,
                 "base_url": self.deepseek_base_url,
-                "model": "deepseek-chat"
+                "model": self.deepseek_model
             }
         elif self.engine == "openai":
             return {
@@ -152,6 +156,7 @@ ENGINE={self.engine}
 # DeepSeek (默认，中文写作首选)
 DEEPSEEK_API_KEY={self.deepseek_api_key}
 DEEPSEEK_BASE_URL={self.deepseek_base_url}
+DEEPSEEK_MODEL={self.deepseek_model}
 
 # OpenAI 兼容 (支持 GPT、Claude 等)
 OPENAI_API_KEY={self.openai_api_key}

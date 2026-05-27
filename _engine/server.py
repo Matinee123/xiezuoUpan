@@ -84,6 +84,7 @@ class APIHandler(SimpleHTTPRequestHandler):
                 "engine": config.engine,
                 "engines": ["deepseek", "greenapi", "ollama", "custom"],
                 "deepseek_api_key": config.deepseek_api_key,
+                "deepseek_model": config.deepseek_model,
                 "greenapi_api_key": config.greenapi_api_key,
                 "greenapi_model": config.greenapi_model,
                 "ollama_model": config.ollama_model,
@@ -291,8 +292,10 @@ class APIHandler(SimpleHTTPRequestHandler):
             config.engine = engine
             if engine == "deepseek":
                 config.deepseek_api_key = body.get("api_key", config.deepseek_api_key)
+                config.deepseek_model = body.get("model", config.deepseek_model)
             elif engine == "greenapi":
                 config.greenapi_api_key = body.get("api_key", config.greenapi_api_key)
+                config.greenapi_model = body.get("model", config.greenapi_model)
             elif engine == "ollama":
                 config.ollama_model = body.get("model", config.ollama_model)
             elif engine == "custom":
