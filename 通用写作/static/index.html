@@ -119,9 +119,9 @@
         <div class="form-group"><label>模型名称</label><input type="text" id="deepseekModel" placeholder="deepseek-chat" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">常用: deepseek-chat、deepseek-reasoner</div></div>
       </div>
       <div id="fieldsGreenapi" class="engine-fields" style="display:none">
-        <div class="form-group"><label>接口地址</label><div class="readonly-url">https://api.martin007.top/v1</div><div class="form-hint">Green-API 中转服务地址</div></div>
-        <div class="form-group"><label>API 密钥</label><input type="password" id="greenapiApiKey" placeholder="sk-xxx" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">填写 Green-API 的密钥</div></div>
-        <div class="form-group"><label>模型名称</label><input type="text" id="greenapiModel" placeholder="gpt-4o-mini" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">如: gpt-4o-mini、gpt-4o、claude-3.5-sonnet</div></div>
+        <div class="form-group"><label>接口地址</label><input type="text" id="greenapiBaseUrl" placeholder="https://api.martin007.top/v1" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">Green-API 接口地址，可自由修改为其他中转站</div></div>
+        <div class="form-group"><label>API 密钥</label><input type="password" id="greenapiApiKey" placeholder="sk-xxx" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">填写 API 密钥</div></div>
+        <div class="form-group"><label>模型名称</label><div style="display:flex;gap:6px;"><input type="text" id="greenapiModel" placeholder="gpt-4o-mini" readonly onfocus="this.removeAttribute('readonly')" style="flex:1;"><button class="btn btn-xs" onclick="fetchGreenModels()" title="从接口获取可用模型列表">🔍 搜索</button></div><div class="form-hint">手动输入模型名，或点击搜索获取可用模型列表</div></div>
       </div>
       <div id="fieldsOllama" class="engine-fields" style="display:none">
         <div class="form-group"><label>接口地址</label><div class="readonly-url">http://localhost:11434/v1</div><div class="form-hint">本地 Ollama 服务地址</div></div>
@@ -130,7 +130,7 @@
       <div id="fieldsCustom" class="engine-fields" style="display:none">
         <div class="form-group"><label>API 地址</label><input type="text" id="customBaseUrl" placeholder="https://your-api.com/v1" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">兼容 OpenAI 格式的接口地址</div></div>
         <div class="form-group"><label>API 密钥</label><input type="password" id="customApiKey" placeholder="sk-xxx" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">从服务商获取的密钥</div></div>
-        <div class="form-group"><label>模型名称</label><input type="text" id="customModel" placeholder="gpt-4o-mini" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">要调用的模型名称</div></div>
+        <div class="form-group"><label>模型名称</label><div style="display:flex;gap:6px;"><input type="text" id="customModel" placeholder="gpt-4o-mini" readonly onfocus="this.removeAttribute('readonly')" style="flex:1;"><button class="btn btn-xs" onclick="fetchCustomModels()" title="从接口获取可用模型列表">🔍 搜索</button></div><div class="form-hint">手动输入或点击搜索获取可用模型</div></div>
       </div>
     </div>
     <div class="modal-footer">

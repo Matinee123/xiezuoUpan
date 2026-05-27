@@ -1,6 +1,7 @@
 import json
 import mimetypes
 import socket
+import urllib.request
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, unquote
@@ -86,6 +87,7 @@ class APIHandler(SimpleHTTPRequestHandler):
                 "deepseek_api_key": config.deepseek_api_key,
                 "deepseek_model": config.deepseek_model,
                 "greenapi_api_key": config.greenapi_api_key,
+                "greenapi_base_url": config.greenapi_base_url,
                 "greenapi_model": config.greenapi_model,
                 "ollama_model": config.ollama_model,
                 "custom_base_url": config.custom_base_url,
@@ -120,6 +122,23 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._json_response(self._get_template_engine().list_prompts())
         elif path == "/api/has-key":
             self._json_response({"has_key": config.has_active_key(), "engine": config.engine})
+        elif path == "/api/proxy-models":
+            base_url = parse_qs(parsed.query).get("url", [None])[0]
+            api_key = parse_qs(parsed.query).get("key", [None])[0]
+            if not base_url or not api_key:
+                self._json_response({"error": "缺少参数"}, 400)
+                return
+            try:
+                url = base_url.rstrip("/") + "/models"
+                req = urllib.request.Request(url, headers={"Authorization": "Bearer " + api_key, "User-Agent": "AI-Writing-Workstation"})
+                resp = urllib.request.urlopen(req, timeout=10)
+                data = json.loads(resp.read().decode())
+                models = []
+                for m in data.get("data", []):
+                    models.append(m.get("id", ""))
+                self._json_response({"models": sorted(models)})
+            except Exception as e:
+                self._json_response({"error": str(e)}, 500)
         elif path == "/api/check-update":
             self._json_response(check_update())
         elif path == "/api/version":
@@ -295,6 +314,7 @@ class APIHandler(SimpleHTTPRequestHandler):
                 config.deepseek_model = body.get("model", config.deepseek_model)
             elif engine == "greenapi":
                 config.greenapi_api_key = body.get("api_key", config.greenapi_api_key)
+                config.greenapi_base_url = body.get("base_url", config.greenapi_base_url)
                 config.greenapi_model = body.get("model", config.greenapi_model)
             elif engine == "ollama":
                 config.ollama_model = body.get("model", config.ollama_model)

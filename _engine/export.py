@@ -153,7 +153,7 @@ def export_docx(title, content):
     from io import BytesIO
     try:
         from docx import Document
-        from docx.shared import Pt, Inches, Cm
+        from docx.shared import Pt, Inches, Cm, RGBColor
     except ImportError:
         return None, 'python-docx 未安装，请运行 install_libs.bat'
 
@@ -180,7 +180,7 @@ def export_docx(title, content):
             p = doc.add_paragraph()
             run = p.add_run(line[2:])
             run.italic = True
-            run.font.color.rgb = (100,100,100) if hasattr(run.font.color,'rgb') else None
+            run.font.color.rgb = RGBColor(100, 100, 100)
         else:
             doc.add_paragraph(line)
 
@@ -202,11 +202,20 @@ def export_pdf(title, content):
 
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
-    styles = getSampleStyleSheet()
 
-    body_style = ParagraphStyle('CNBody', fontSize=11, leading=20, spaceAfter=12)
-    h1_style = ParagraphStyle('CNH1', fontSize=20, leading=28, spaceAfter=16, textColor='#cc0000')
-    h2_style = ParagraphStyle('CNH2', fontSize=15, leading=22, spaceAfter=10, spaceBefore=12)
+    # 注册中文字体
+    try:
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        pdfmetrics.registerFont(TTFont('SimHei', 'C:/Windows/Fonts/simhei.ttf'))
+        cn_font = 'SimHei'
+    except Exception:
+        cn_font = 'Helvetica'
+
+    styles = getSampleStyleSheet()
+    body_style = ParagraphStyle('CNBody', fontName=cn_font, fontSize=11, leading=22, spaceAfter=12)
+    h1_style = ParagraphStyle('CNH1', fontName=cn_font, fontSize=20, leading=28, spaceAfter=16, textColor='#cc0000')
+    h2_style = ParagraphStyle('CNH2', fontName=cn_font, fontSize=15, leading=22, spaceAfter=10, spaceBefore=12)
 
     story = [Paragraph(title, h1_style), Spacer(1, 12)]
 

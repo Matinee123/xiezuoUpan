@@ -36,7 +36,13 @@ def call_llm(messages, config, stream=False, temperature=0.7, max_tokens=4096):
     except urllib.error.URLError as e:
         raise LLMError(f"网络连接失败: {e.reason}")
 
-    result = json.loads(resp.read().decode("utf-8"))
+    body = resp.read().decode("utf-8")
+    if not body:
+        raise LLMError("API 返回空响应，请检查接口地址是否正确")
+    try:
+        result = json.loads(body)
+    except json.JSONDecodeError:
+        raise LLMError(f"API 返回格式异常: {body[:200]}")
     if "choices" not in result or not result["choices"]:
         raise LLMError(f"API 返回异常: {json.dumps(result, ensure_ascii=False)}")
 
