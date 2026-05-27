@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create release zip
+        run: |
+          zip -r xiezuoUpan.zip . \
+            -x ".git/*" "_env/*" "_data/*" ".env.local" "__pycache__/*" "*.pyc" "_backup/*"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: xiezuoUpan.zip
+          body: |
+            ## 下载说明
+            
+            1. 下载 `xiezuoUpan.zip`
+            2. 解压到 U盘根目录
+            3. 双击 `启动写作台.bat`
+            4. 首次启动自动下载 Python 环境
+            5. 填写 API Key，开始写作
+            
+            ### 升级方式
+            如已有旧版本，下载覆盖即可（不会覆盖您的文档和配置）
+          generate_release_notes: true
