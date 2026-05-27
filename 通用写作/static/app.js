@@ -223,24 +223,42 @@ async function aiChat() {
 }
 
 // ======== 导出 ========
-async function doExport(format) {
+async function doExport(format, style) {
   const title = document.getElementById("docTitle").value || "未命名";
   const content = document.getElementById("editor").value;
   if (!content) { alert("没有内容可导出"); return; }
+  const body = { title, content, format };
+  if (style) body.style = style;
   try {
-    const r = await fetch("/api/export", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({title, content, format})
-    });
+    const r = await fetch("/api/export", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
     const data = await r.json();
-    if (data.content) {
+    if (format === "docx" || format === "pdf") {
+      if (data.download_url) { window.open(data.download_url, "_blank"); }
+      else if (data.error) alert(data.error);
+    } else if (data.content) {
       document.getElementById("exportContent").value = data.content;
       document.getElementById("exportResult").style.display = "block";
-    } else if (data.error) {
-      alert("导出失败: " + data.error);
-    }
+      if (format === "wechat") {
+        var iframe = document.getElementById("exportPreview");
+        iframe.srcdoc = data.content;
+        document.getElementById("exportPreviewWrap").style.display = "block";
+        document.getElementById("exportContent").style.display = "none";
+      } else {
+        document.getElementById("exportPreviewWrap").style.display = "none";
+        document.getElementById("exportContent").style.display = "block";
+      }
+    } else if (data.error) alert("导出失败: " + data.error);
   } catch(e) { alert("导出失败: " + e.message); }
+}
+
+function showWechatStyle() { document.getElementById("exportResult").style.display = "none"; document.getElementById("wechatStylePanel").style.display = "block"; }
+
+function searchDocs() {
+  var q = document.getElementById("searchInput").value.trim();
+  if (!q) { loadDocs(); return; }
+  fetch("/api/search?q=" + encodeURIComponent(q)).then(r => r.json()).then(data => {
+    allDocs = data; renderDocList();
+  }).catch(() => {});
 }
 
 function copyExport() {
@@ -277,6 +295,7 @@ async function saveSettings() {
 
 function showExport() {
   document.getElementById("exportResult").style.display = "none";
+  document.getElementById("wechatStylePanel").style.display = "none";
   document.getElementById("exportModal").style.display = "flex";
 }
 

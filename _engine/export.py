@@ -149,3 +149,76 @@ def save_file(path, content):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
     return str(path)
+def export_docx(title, content):
+    from io import BytesIO
+    try:
+        from docx import Document
+        from docx.shared import Pt, Inches, Cm
+    except ImportError:
+        return None, 'python-docx 未安装，请运行 install_libs.bat'
+
+    doc = Document()
+    doc.styles['Normal'].font.name = 'Microsoft YaHei'
+    doc.styles['Normal'].font.size = Pt(11)
+    doc.styles['Normal'].paragraph_format.line_spacing = 1.5
+
+    h = doc.add_heading(title, level=0)
+    h.alignment = 1  # center
+
+    for para in content.strip().split(chr(10)):
+        line = para.strip()
+        if not line: continue
+        if line.startswith('# '):
+            doc.add_heading(line[2:], level=1)
+        elif line.startswith('## '):
+            doc.add_heading(line[3:], level=2)
+        elif line.startswith('### '):
+            doc.add_heading(line[4:], level=3)
+        elif line.startswith('- ') or line.startswith('* '):
+            doc.add_paragraph(line[2:], style='List Bullet')
+        elif line.startswith('> '):
+            p = doc.add_paragraph()
+            run = p.add_run(line[2:])
+            run.italic = True
+            run.font.color.rgb = (100,100,100) if hasattr(run.font.color,'rgb') else None
+        else:
+            doc.add_paragraph(line)
+
+    buf = BytesIO()
+    doc.save(buf)
+    return buf.getvalue(), None
+
+def export_pdf(title, content):
+    from io import BytesIO
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import cm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+    except ImportError:
+        return None, 'reportlab 未安装，请运行 install_libs.bat'
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+    styles = getSampleStyleSheet()
+
+    body_style = ParagraphStyle('CNBody', fontSize=11, leading=20, spaceAfter=12)
+    h1_style = ParagraphStyle('CNH1', fontSize=20, leading=28, spaceAfter=16, textColor='#cc0000')
+    h2_style = ParagraphStyle('CNH2', fontSize=15, leading=22, spaceAfter=10, spaceBefore=12)
+
+    story = [Paragraph(title, h1_style), Spacer(1, 12)]
+
+    for para in content.strip().split(chr(10)):
+        line = para.strip()
+        if not line: story.append(Spacer(1,6)); continue
+        if line.startswith('# '): story.append(Paragraph(line[2:], h1_style))
+        elif line.startswith('## '): story.append(Paragraph(line[3:], h2_style))
+        elif line.startswith('### '): story.append(Paragraph('<b>' + line[4:] + '</b>', body_style))
+        elif line.startswith('- '): story.append(Paragraph('• ' + line[2:], body_style))
+        elif line.startswith('> '): story.append(Paragraph('<i>' + line[2:] + '</i>', body_style))
+        else: story.append(Paragraph(line, body_style))
+
+    doc.build(story)
+    return buf.getvalue(), None

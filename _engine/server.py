@@ -8,7 +8,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 from .config import config
 from .docstore import docstore
 from .llm import call_llm, LLMError
-from .export import export_markdown, export_html, export_wechat_html
+from .export import export_markdown, export_html, export_wechat_html, export_docx, export_pdf
 from .template import TemplateEngine
 from .updater import check_update, apply_update
 
@@ -138,6 +138,31 @@ class APIHandler(SimpleHTTPRequestHandler):
                 {"id":"media","name":"媒体创作","icon":"📱","desc":"公众号、小红书、短视频脚本、新闻稿","theme":"#ea580c"},
                 {"id":"general","name":"通用写作","icon":"🌐","desc":"自由创作，适合各类日常写作场景","theme":"#6366f1"}
             ])
+        elif path == "/api/download":
+            fname = parse_qs(parsed.query).get("f", [None])[0]
+            if fname:
+                fpath = HERE / "exports" / fname
+                if fpath.exists():
+                    self.send_response(200)
+                    ct = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if fname.endswith(".docx") else "application/pdf"
+                    self.send_header("Content-Type", ct)
+                    self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+                    self.send_header("Content-Length", str(fpath.stat().st_size))
+                    self.end_headers()
+                    self.wfile.write(fpath.read_bytes())
+                    return
+            self._json_response({"error": "文件不存在"}, 404)
+        elif path == "/api/search":
+            q = parse_qs(parsed.query).get("q", [""])[0]
+            if q:
+                results = []
+                for doc_id, meta in docstore.docs.items():
+                    title = meta.get("title", "")
+                    if q.lower() in title.lower():
+                        results.append({"id": doc_id, "title": title, "updated_at": meta.get("updated_at", "")})
+                self._json_response(results)
+            else:
+                self._json_response([])
         else:
             self._serve_static()
 
@@ -234,6 +259,28 @@ class APIHandler(SimpleHTTPRequestHandler):
             elif fmt == "wechat":
                 result = export_wechat_html(title, content, body.get("style", "business"))
                 self._json_response({"format": "wechat", "content": result})
+            elif fmt == "docx":
+                data, err = export_docx(title, content)
+                if err:
+                    self._json_response({"error": err}, 400)
+                else:
+                    import uuid
+                    fname = f"exports/doc_{uuid.uuid4().hex[:8]}.docx"
+                    fpath = HERE / fname
+                    fpath.parent.mkdir(parents=True, exist_ok=True)
+                    fpath.write_bytes(data)
+                    self._json_response({"format": "docx", "download_url": f"/api/download?f={fpath.name}"})
+            elif fmt == "pdf":
+                data, err = export_pdf(title, content)
+                if err:
+                    self._json_response({"error": err}, 400)
+                else:
+                    import uuid
+                    fname = f"exports/doc_{uuid.uuid4().hex[:8]}.pdf"
+                    fpath = HERE / fname
+                    fpath.parent.mkdir(parents=True, exist_ok=True)
+                    fpath.write_bytes(data)
+                    self._json_response({"format": "pdf", "download_url": f"/api/download?f={fpath.name}"})
             else:
                 self._json_response({"error": f"不支持的格式: {fmt}"}, 400)
         elif path == "/api/switch-engine":
