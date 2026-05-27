@@ -313,6 +313,11 @@ class APIHandler(SimpleHTTPRequestHandler):
             if engine not in ["deepseek", "greenapi", "ollama", "custom", "local"]:
                 self._json_response({"error": f"不支持的引擎: {engine}"}, 400)
                 return
+            if engine == "local" and not is_running():
+                ok, msg = start_server()
+                if not ok:
+                    self._json_response({"error": f"本地模型启动失败: {msg}", "engine": config.engine}, 500)
+                    return
             config.engine = engine
             if engine == "deepseek":
                 config.deepseek_api_key = body.get("api_key", config.deepseek_api_key)
@@ -326,6 +331,12 @@ class APIHandler(SimpleHTTPRequestHandler):
             elif engine == "local":
                 config.local_model = body.get("model", config.local_model)
                 config.local_base_url = body.get("base_url", config.local_base_url)
+                if not config.local_model:
+                    from .local_llm import find_model
+                    from pathlib import Path
+                    m = find_model()
+                    if m:
+                        config.local_model = Path(m).stem
             elif engine == "custom":
                 config.custom_base_url = body.get("base_url", config.custom_base_url)
                 config.custom_api_key = body.get("api_key", config.custom_api_key)

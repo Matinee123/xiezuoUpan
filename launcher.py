@@ -44,7 +44,9 @@ def main():
         ok, msg = start_server(info["model_path"])
         print(f"  [{('OK' if ok else '!!')}] {msg}")
         if ok:
-            engine_changed = False
+            from _engine.config import config
+            if config.engine not in ("local", "ollama"):
+                config.engine = "local"
     else:
         print("  [..] 未发现离线模型，仅可使用云端引擎")
         print("  下载模型文件(.gguf)放入 _models/ 目录即可离线使用")
