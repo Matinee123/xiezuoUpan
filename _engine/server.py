@@ -129,6 +129,22 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._json_response(model_info())
         elif path == "/api/local-models":
             self._json_response(list_models())
+        elif path == "/api/install-llama":
+            import zipfile, io, tempfile, shutil
+            url = "https://github.com/ggml-org/llama.cpp/releases/download/b9370/llama-b9370-bin-win-cpu-x64.zip"
+            temp_zip = MODELS_DIR / "_llama_temp.zip"
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "AI-Writing-Workstation"})
+                resp = urllib.request.urlopen(req, timeout=600)
+                temp_zip.write_bytes(resp.read())
+                with zipfile.ZipFile(temp_zip, "r") as zf:
+                    zf.extractall(MODELS_DIR)
+                temp_zip.unlink()
+                self._json_response({"ok": True, "message": "llama-server 安装完成"})
+            except Exception as e:
+                if temp_zip.exists():
+                    temp_zip.unlink()
+                self._json_response({"ok": False, "error": str(e)}, 500)
         elif path == "/api/proxy-models":
             base_url = parse_qs(parsed.query).get("url", [None])[0]
             api_key = parse_qs(parsed.query).get("key", [None])[0]
