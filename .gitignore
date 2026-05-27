@@ -7,9 +7,9 @@ __pycache__/
 _backup/
 _upgrade_tmp/
 *.whl
+xiezuoUpan.zip
 exports/
 
-_models/llama-server.exe
-_models/*.gguf
-
-xiezuoUpan.zip
+# LLM models and runtime (downloaded by user)
+_models/*
+!_models/.gitkeep
