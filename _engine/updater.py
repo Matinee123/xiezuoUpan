@@ -8,7 +8,7 @@ HERE = Path(__file__).resolve().parent.parent
 VERSION_FILE = HERE / "version.json"
 BACKUP_DIR = HERE / "_backup"
 GITHUB_API = "https://api.github.com/repos/Matinee123/xiezuoUpan/releases/latest"
-PROTECTED = [".env.local", "_data", "_backup", "_env", "version.json"]
+PROTECTED = [".env.local", "_data", "_backup", "_env"]
 
 def get_current_version():
     """读取当前版本号"""
@@ -124,13 +124,6 @@ def apply_update(download_url):
         # Rollback
         rollback(backed)
         return {"ok": False, "error": f"解压失败: {e}", "stage": "extract", "rolled_back": True}
-
-    # Update version.json
-    try:
-        if (extract_dir / "version.json").exists():
-            shutil.copy2(extract_dir / "version.json", VERSION_FILE)
-    except Exception:
-        pass
 
     # Cleanup
     try:

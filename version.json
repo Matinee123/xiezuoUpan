@@ -1,10 +1,21 @@
-﻿{
-  "version": "1.0.0",
-  "build": 1,
-  "release_date": "2026-05-26",
+{
+  "version": "1.0.11",
+  "build": 11,
+  "release_date": "2026-05-27",
   "min_compatible_version": "1.0.0",
-  "update_url": "https://api.github.com/repos/anomalyco/xiezuoUpan/releases/latest",
+  "update_url": "https://api.github.com/repos/Matinee123/xiezuoUpan/releases/latest",
   "changelog": {
-    "1.0.0": "首个版本：核心引擎 + 通用写作 MVP，支持 AI 对话写作、文档管理、Markdown/HTML 导出"
+    "1.0.0": "首发版：8个行业57个模板",
+    "1.0.1": "修复导出、新增日记模板",
+    "1.0.2": "Green-API引擎、配置向导、升级系统",
+    "1.0.3": "缓存修复、功能恢复",
+    "1.0.4": "完整恢复版本路由和API",
+    "1.0.5": "全部模板补范例(54/58)",
+    "1.0.6": "Word/PDF导出、文档搜索、移动端适配",
+    "1.0.7": "恢复完整前端逻辑",
+    "1.0.8": "扩大编辑区、清理旧CSS",
+    "1.0.9": "设置添加模型选择",
+    "1.0.10": "Green-API接口地址修复",
+    "1.0.11": "模型搜索、Word/PDF修复、说明书重写、升级系统修复"
   }
 }
