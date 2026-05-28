@@ -1,6 +1,7 @@
 import subprocess
 import os
 import time
+import json
 import urllib.request
 import urllib.error
 from pathlib import Path
@@ -71,11 +72,24 @@ def start_server(model_path=None):
         )
         for _ in range(120):
             time.sleep(0.5)
-            if is_running():
-                return True, "本地模型已启动"
             if local_process.poll() is not None:
                 err = local_process.stderr.read().decode("utf-8", errors="replace").strip()
                 return False, f"启动失败(进程退出): {err[:200]}"
+            # 发真实请求确认模型能生成内容
+            try:
+                url = f"http://127.0.0.1:{DEFAULT_PORT}/v1/chat/completions"
+                body = json.dumps({
+                    "model": Path(model_path).stem,
+                    "messages": [{"role":"user","content":"hi"}],
+                    "max_tokens": 1
+                }).encode()
+                req = urllib.request.Request(url, data=body, headers={"Content-Type":"application/json"})
+                resp = urllib.request.urlopen(req, timeout=5)
+                data = json.loads(resp.read().decode("utf-8"))
+                if data.get("choices"):
+                    return True, "本地模型已启动"
+            except Exception:
+                pass
         local_process.terminate()
         err = local_process.stderr.read().decode("utf-8", errors="replace").strip()
         return False, f"启动超时(60秒): {err[:200]}"
