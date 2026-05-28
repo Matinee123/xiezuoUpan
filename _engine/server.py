@@ -168,6 +168,28 @@ class APIHandler(SimpleHTTPRequestHandler):
                     self._json_response({"ok": True, "message": "llama-server安装完成(模型下载失败: {})".format(str(e)[:60])})
             else:
                 self._json_response({"ok": True, "message": "llama-server 安装完成"})
+        elif path == "/api/download-model":
+            url = parse_qs(parsed.query).get("url", [None])[0]
+            fname = parse_qs(parsed.query).get("file", ["model.gguf"])[0]
+            if not url:
+                self._json_response({"error": "缺少下载地址"}, 400)
+                return
+            dest = MODELS_DIR / fname
+            if dest.exists():
+                self._json_response({"ok": True, "message": "模型已存在，跳过下载"})
+                return
+            tmp = MODELS_DIR / (fname + ".tmp")
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "AI-Writing-Workstation"})
+                resp = urllib.request.urlopen(req, timeout=1800)
+                tmp.write_bytes(resp.read())
+                tmp.rename(dest)
+                size_mb = round(dest.stat().st_size / (1024*1024), 1)
+                self._json_response({"ok": True, "filename": fname, "size_mb": size_mb})
+            except Exception as e:
+                if tmp.exists():
+                    tmp.unlink()
+                self._json_response({"ok": False, "error": str(e)[:200]}, 500)
         elif path == "/api/proxy-models":
             base_url = parse_qs(parsed.query).get("url", [None])[0]
             api_key = parse_qs(parsed.query).get("key", [None])[0]
