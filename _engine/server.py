@@ -212,7 +212,10 @@ class APIHandler(SimpleHTTPRequestHandler):
         elif path == "/api/version":
             version_file = HERE / "version.json"
             if version_file.exists():
-                self._json_response(json.loads(version_file.read_text(encoding="utf-8-sig")))
+                try:
+                    self._json_response(json.loads(version_file.read_text(encoding="utf-8-sig")))
+                except Exception:
+                    self._json_response({"version": "1.1.20"})
             else:
                 self._json_response({"version": "1.0.0"})
         elif path == "/api/versions":
