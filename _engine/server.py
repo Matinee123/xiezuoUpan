@@ -444,10 +444,11 @@ class APIHandler(SimpleHTTPRequestHandler):
         return self.template_engine
 
     def _ensure_local_ready(self):
-        """确保本地模型进程已启动，不检查内容就绪"""
+        """确保本地模型已启动"""
         from .local_llm import is_running, start_server
         if not is_running():
-            start_server()
+            ok, msg = start_server()
+            return ok
         return True
 
     def _read_body(self):

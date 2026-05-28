@@ -54,6 +54,9 @@ def start_server(model_path=None):
     if is_running():
         return True, "本地模型已在运行"
 
+    # 先清理可能残留的旧进程
+    stop_server()
+
     exe = str(SERVER_EXE)
     if not os.path.exists(exe):
         # Try system llama.cpp

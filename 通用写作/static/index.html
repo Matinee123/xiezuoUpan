@@ -75,9 +75,12 @@
       </main>
       <div class="resize-handle" id="resizeRight" title="拖拽调整 AI 面板宽度"></div>
       <aside class="ai-sidebar" id="aiPanel">
-        <div class="ai-panel-header" onclick="toggleAIPanel()">
+        <div class="ai-panel-header">
           <span>💬 AI 对话</span>
-          <button class="btn btn-xs" id="aiToggleBtn">收起 ▲</button>
+          <div style="display:flex;gap:4px;">
+            <button class="btn btn-xs" onclick="clearChat()" title="清空对话">清空</button>
+            <button class="btn btn-xs" id="aiToggleBtn" title="点击收起或展开 AI 对话面板">收起 ▲</button>
+          </div>
         </div>
         <div class="ai-panel-body" id="aiPanelBody">
           <div class="ai-messages" id="aiMessages"></div>

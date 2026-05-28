@@ -204,9 +204,15 @@ async function doUpgrade(){if(!upgradeData||!upgradeData.download_url)return;doc
 
 // ======== AI 面板 ========
 function toggleAIPanel(){const b=document.getElementById("aiPanelBody");const s=document.getElementById("aiPanel");const btn=document.getElementById("aiToggleBtn");if(b.style.display==="none"){b.style.display="flex";s.style.width="360px";s.style.minWidth="";btn.innerHTML="收起 ▲";}else{b.style.display="none";s.style.width="40px";s.style.minWidth="40px";btn.innerHTML="展开 ▼";}}
-function addUserMsg(text){const m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg user"><span class="msg-label">你</span>'+escapeHtml(text)+'</div>';m.scrollTop=m.scrollHeight;}
-function addThinkingMsg(){var tid="think_"+Date.now();var m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg thinking" id="'+tid+'"><span class="msg-label">🤔 AI</span>正在思考...</div>';m.scrollTop=m.scrollHeight;return tid;}
+function addUserMsg(text){var m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg user"><div class="ai-msg-row"><span class="msg-label">你</span><span class="msg-time">'+timeNow()+'</span></div><div class="ai-msg-text">'+escapeHtml(text)+'</div></div>';m.scrollTop=m.scrollHeight;}
+function addAssistantMsg(text){var mid="ai_"+Date.now();var m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg assistant" id="'+mid+'"><div class="ai-msg-row"><span class="msg-label">AI</span><span class="msg-time">'+timeNow()+'</span></div><div class="ai-msg-text">'+escapeHtml(text)+'</div><div class="ai-msg-actions"><button class="msg-btn" onclick="copyMsg(\''+mid+'\')" title="复制到剪贴板">📋</button><button class="msg-btn" onclick="insertMsg(\''+mid+'\')" title="插入到编辑器">📝</button></div></div>';m.scrollTop=m.scrollHeight;}
+function addSystemMsg(text){var m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg system-msg" style="background:transparent;text-align:center;color:var(--text-dim);font-size:12px;">'+escapeHtml(text)+'</div>';m.scrollTop=m.scrollHeight;}
+function addThinkingMsg(){var tid="think_"+Date.now();var m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg thinking" id="'+tid+'"><span class="msg-label">🤔 AI</span> 正在思考...</div>';m.scrollTop=m.scrollHeight;return tid;}
 function removeThinkingMsg(tid){var el=document.getElementById(tid);if(el)el.remove();}
+function timeNow(){var d=new Date();return d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");}
+function clearChat(){var m=document.getElementById("aiMessages");m.innerHTML="";addSystemMsg("对话已清空");}
+function copyMsg(mid){var el=document.getElementById(mid);if(!el)return;var txt=el.querySelector(".ai-msg-text");if(txt){navigator.clipboard.writeText(txt.textContent);showToast("已复制");}}
+function insertMsg(mid){var el=document.getElementById(mid);if(!el)return;var txt=el.querySelector(".ai-msg-text");if(txt){var ed=document.getElementById("editor");ed.value=ed.value+"\n\n"+txt.textContent;showToast("已插入编辑器");}}
 function addAssistantMsg(text){const m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg assistant"><span class="msg-label">AI</span>'+escapeHtml(text)+'</div>';m.scrollTop=m.scrollHeight;}
 function addSystemMsg(text){const m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg" style="background:transparent;text-align:center;color:var(--text-dim);font-size:12px;">'+escapeHtml(text)+'</div>';m.scrollTop=m.scrollHeight;}
 
