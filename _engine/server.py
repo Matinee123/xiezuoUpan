@@ -7,7 +7,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, unquote
 
-from .config import config
+from .config import config, RECOMMENDED_MODELS
 from .docstore import docstore
 from .llm import call_llm, LLMError
 from .export import export_markdown, export_html, export_wechat_html, export_docx, export_pdf
@@ -130,6 +130,8 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._json_response(model_info())
         elif path == "/api/local-models":
             self._json_response(list_models())
+        elif path == "/api/recommended-models":
+            self._json_response(RECOMMENDED_MODELS)
         elif path == "/api/install-llama":
             import zipfile, io, tempfile, shutil
             # Check for model download option

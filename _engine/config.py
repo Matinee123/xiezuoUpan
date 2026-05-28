@@ -4,6 +4,15 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent.parent
 ENV_FILE = HERE / ".env.local"
 
+RECOMMENDED_MODELS = [
+    {"ram":"8GB","name":"Qwen2.5-1.5B","brand":"千问","size":"~1.0GB","desc":"日常写作够用，速度快","url":"https://modelscope.cn/models/Qwen/Qwen2.5-1.5B-Instruct-GGUF","file":"qwen2.5-1.5b-instruct-q4_k_m.gguf"},
+    {"ram":"8GB","name":"DeepSeek-R1-1.5B","brand":"DeepSeek","size":"~1.1GB","desc":"推理能力突出，逻辑清晰","url":"https://modelscope.cn/models/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B-GGUF","file":"deepseek-r1-distill-qwen-1.5b-q4_k_m.gguf"},
+    {"ram":"16GB","name":"Qwen2.5-3B","brand":"千问","size":"~2.0GB","desc":"写作质量明显提升","url":"https://modelscope.cn/models/Qwen/Qwen2.5-3B-Instruct-GGUF","file":"qwen2.5-3b-instruct-q4_k_m.gguf"},
+    {"ram":"16GB","name":"DeepSeek-R1-7B","brand":"DeepSeek","size":"~4.7GB","desc":"专业级推理+写作效果","url":"https://modelscope.cn/models/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B-GGUF","file":"deepseek-r1-distill-qwen-7b-q4_k_m.gguf"},
+    {"ram":"32GB","name":"Qwen2.5-7B","brand":"千问","size":"~4.5GB","desc":"专业级写作效果","url":"https://modelscope.cn/models/Qwen/Qwen2.5-7B-Instruct-GGUF","file":"qwen2.5-7b-instruct-q4_k_m.gguf"},
+    {"ram":"32GB","name":"Qwen2.5-14B","brand":"千问","size":"~8.5GB","desc":"顶级写作质量","url":"https://modelscope.cn/models/Qwen/Qwen2.5-14B-Instruct-GGUF","file":"qwen2.5-14b-instruct-q4_k_m.gguf"},
+]
+
 class Config:
     def __init__(self):
         self.engine = "deepseek"
