@@ -33,11 +33,12 @@ def list_models():
     return result
 
 def is_running():
-    """检查本地模型是否在运行"""
+    """检查本地模型是否在运行且模型已加载"""
     try:
         req = urllib.request.Request(f"http://127.0.0.1:{DEFAULT_PORT}/health", headers={"User-Agent": "LocalLLM"})
-        urllib.request.urlopen(req, timeout=2)
-        return True
+        resp = urllib.request.urlopen(req, timeout=3)
+        data = resp.read().decode("utf-8", errors="replace")
+        return '"ok"' in data or '"status"' in data
     except:
         return False
 
