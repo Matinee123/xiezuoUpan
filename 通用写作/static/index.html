@@ -131,6 +131,12 @@
       <div id="fieldsLocal" class="engine-fields" style="display:none">
         <div class="form-group"><label>接口地址</label><div class="readonly-url">http://127.0.0.1:8088/v1</div></div>
         <div class="form-group"><label>已安装模型</label><select id="localModelSelect" class="wizard-select"><option value="">检测中...</option></select></div>
+        <div style="padding:8px 10px;margin-bottom:8px;background:rgba(99,102,241,0.06);border-radius:6px;font-size:11px;color:var(--text-dim);line-height:1.5;">
+          💡 <b>参数越大文章质量越高</b><br>
+          · 1.5B：轻量快速，8GB内存可运行<br>
+          · 3B：质量提升，建议16GB内存<br>
+          · 7B+：专业品质，需32GB内存
+        </div>
         <button class="btn btn-primary wizard-btn" onclick="showInstallOptions()" id="installLocalBtn">📦 一键安装离线环境</button>
         <div id="installOptions" style="display:none;margin:8px 0;padding:10px;background:var(--bg4);border-radius:6px;">
           <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:8px;">安装选项:</label>
