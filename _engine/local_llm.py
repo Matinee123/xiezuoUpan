@@ -85,9 +85,16 @@ def start_server(model_path=None):
                 }).encode()
                 req = urllib.request.Request(url, data=body, headers={"Content-Type":"application/json"})
                 resp = urllib.request.urlopen(req, timeout=5)
-                data = json.loads(resp.read().decode("utf-8"))
+                raw = resp.read().decode("utf-8", errors="replace")
+                data = json.loads(raw)
                 if data.get("choices"):
                     return True, "本地模型已启动"
+            except json.JSONDecodeError:
+                pass
+            except urllib.error.URLError:
+                pass
+            except urllib.error.HTTPError:
+                pass
             except Exception:
                 pass
         local_process.terminate()

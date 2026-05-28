@@ -48,7 +48,7 @@ def call_llm(messages, config, stream=False, temperature=0.7, max_tokens=4096):
                 continue
             raise LLMError(f"网络连接失败: {e.reason}")
 
-        body = resp.read().decode("utf-8")
+        body = resp.read().decode("utf-8", errors="replace")
         if not body:
             if is_local and attempt < max_retries - 1:
                 continue
