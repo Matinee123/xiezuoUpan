@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 chcp 65001 >nul
 title AI 写作工作台 - 安装依赖
 echo ========================================
@@ -14,7 +14,7 @@ if %errorlevel% neq 0 (
 )
 
 echo 正在安装 PDF/DOCX 导出所需库...
-pip install reportlab python-docx -q
+"%~dp0_env\Scripts\python.exe" -m pip install reportlab python-docx -q
 if %errorlevel% neq 0 (
     echo [警告] 部分库安装失败，导出 PDF/DOCX 功能不可用
     echo 但 Markdown/HTML 导出不受影响

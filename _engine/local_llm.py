@@ -8,6 +8,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
 MODELS_DIR = HERE / "_models"
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
 SERVER_EXE = MODELS_DIR / "llama-server.exe"
 DEFAULT_PORT = 8088
 

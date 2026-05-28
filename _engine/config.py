@@ -1,4 +1,4 @@
-﻿import os
+import os
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
@@ -165,13 +165,6 @@ PORT=8080
             return False
         return bool(cfg.get("api_key", "").strip())
 
-    def has_active_key(self):
-        if self.engine == "ollama":
-            return True
-        cfg = self.get_active_config()
-        if cfg is None:
-            return False
-        return bool(cfg.get("api_key", "").strip())
 
     def to_env_text(self):
         return f"""# AI 写作工作台 - 配置

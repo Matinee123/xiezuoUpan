@@ -444,12 +444,12 @@ class APIHandler(SimpleHTTPRequestHandler):
         return self.template_engine
 
     def _ensure_local_ready(self):
-        """确保本地模型已启动"""
-        from .local_llm import is_running, start_server
-        if not is_running():
-            ok, msg = start_server()
-            return ok
-        return True
+        """确保本地模型已启动——不信 health，重启保证干净状态"""
+        from .local_llm import start_server, stop_server
+        stop_server()
+        time.sleep(1)
+        ok, msg = start_server()
+        return ok
 
     def _read_body(self):
         length = int(self.headers.get("Content-Length", 0))

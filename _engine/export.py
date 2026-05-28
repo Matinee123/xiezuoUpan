@@ -207,8 +207,13 @@ def export_pdf(title, content):
     try:
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
-        pdfmetrics.registerFont(TTFont('SimHei', 'C:/Windows/Fonts/simhei.ttf'))
-        cn_font = 'SimHei'
+        import os
+        cn_font = 'Helvetica'
+        for fp in ['C:/Windows/Fonts/simhei.ttf', 'C:/Windows/Fonts/msyh.ttc', 'C:/Windows/Fonts/simsun.ttc']:
+            if os.path.exists(fp):
+                pdfmetrics.registerFont(TTFont('SimHei', fp))
+                cn_font = 'SimHei'
+                break
     except Exception:
         cn_font = 'Helvetica'
 
