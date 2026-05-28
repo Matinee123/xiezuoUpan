@@ -113,7 +113,7 @@ async function aiGenerateWizard() {
   try {
     const r = await fetch("/api/generate", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({prompt, version:currentVersion, template:currentTemplate.name}) });
     const data = await r.json();
-    if (data.content) { removeThinkingMsg(tid); document.getElementById("editor").value=data.content; addAssistantMsg("【"+currentTemplate.name+"】生成完成。"); await saveDoc(); }
+    if (data.content) { removeThinkingMsg(tid); document.getElementById("editor").value=prompt+"\n\n---\n\n"+data.content; addAssistantMsg("【"+currentTemplate.name+"】生成完成。"); await saveDoc(); }
     else if (data.error) { removeThinkingMsg(tid); addAssistantMsg("错误："+data.error); }
   } catch(e) { removeThinkingMsg(tid); addAssistantMsg("请求失败："+e.message); }
   setLoading(false);
@@ -137,7 +137,7 @@ async function aiGenerate() {
   const prompt = document.getElementById("editor").value.trim();
   if (!prompt) { addSystemMsg("请先在编辑区输入写作需求。"); return; }
   setLoading(true); addUserMsg("生成文章："+prompt.substring(0,100)); var tid=addThinkingMsg();
-  try { const r=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,version:currentVersion})}); const d=await r.json(); if(d.content){removeThinkingMsg(tid);document.getElementById("editor").value=d.content;addAssistantMsg("文章生成完成。");await saveDoc();}else if(d.error){removeThinkingMsg(tid);addAssistantMsg("错误："+d.error);} } catch(e){removeThinkingMsg(tid);addAssistantMsg("请求失败："+e.message);}
+  try { const r=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,version:currentVersion})}); const d=await r.json(); if(d.content){removeThinkingMsg(tid);document.getElementById("editor").value=prompt+"\n\n---\n\n"+d.content;addAssistantMsg("文章生成完成。");await saveDoc();}else if(d.error){removeThinkingMsg(tid);addAssistantMsg("错误："+d.error);} } catch(e){removeThinkingMsg(tid);addAssistantMsg("请求失败："+e.message);}
   setLoading(false);
 }
 async function aiContinue() {
