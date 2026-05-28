@@ -1,6 +1,7 @@
 import json
 import mimetypes
 import socket
+import time
 import urllib.request
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
@@ -354,13 +355,15 @@ class APIHandler(SimpleHTTPRequestHandler):
             if engine == "local" and not is_running():
                 mname = body.get("model", "")
                 if mname:
-                    mp = str(MODELS_DIR / (mname + ".gguf" if not mname.endswith(".gguf") else mname))
+                    mp = str(MODELS_DIR / mname)
                 else:
-                    mp = str(MODELS_DIR / find_model())
-                ok, msg = start_server(mp if mname else None)
-                if not ok:
-                    self._json_response({"error": f"本地模型启动失败: {msg}", "engine": config.engine}, 500)
+                    mp = find_model()
+                if not mp:
+                    self._json_response({"error": "未找到模型文件，请先安装或下载模型", "engine": config.engine}, 500)
                     return
+                import threading
+                threading.Thread(target=start_server, args=(mp,), daemon=True).start()
+                time.sleep(0.5)
             config.engine = engine
             if engine == "deepseek":
                 config.deepseek_api_key = body.get("api_key", config.deepseek_api_key)
