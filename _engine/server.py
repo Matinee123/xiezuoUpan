@@ -85,7 +85,7 @@ class APIHandler(SimpleHTTPRequestHandler):
         elif path == "/api/config":
             self._json_response({
                 "engine": config.engine,
-                "engines": ["deepseek", "greenapi", "ollama", "custom", "local"],
+                "engines": ["deepseek", "greenapi", "custom", "local"],
                 "deepseek_api_key": config.deepseek_api_key,
                 "deepseek_model": config.deepseek_model,
                 "greenapi_api_key": config.greenapi_api_key,
@@ -373,7 +373,7 @@ class APIHandler(SimpleHTTPRequestHandler):
                 self._json_response({"error": f"不支持的格式: {fmt}"}, 400)
         elif path == "/api/switch-engine":
             engine = body.get("engine", "")
-            if engine not in ["deepseek", "greenapi", "ollama", "custom", "local"]:
+            if engine not in ["deepseek", "greenapi", "custom", "local"]:
                 self._json_response({"error": f"不支持的引擎: {engine}"}, 400)
                 return
             if engine == "local" and not is_running():
@@ -397,8 +397,6 @@ class APIHandler(SimpleHTTPRequestHandler):
                 config.greenapi_api_key = body.get("api_key", config.greenapi_api_key)
                 config.greenapi_base_url = body.get("base_url", config.greenapi_base_url)
                 config.greenapi_model = body.get("model", config.greenapi_model)
-            elif engine == "ollama":
-                config.ollama_model = body.get("model", config.ollama_model)
             elif engine == "local":
                 config.local_model = body.get("model", config.local_model)
                 config.local_base_url = body.get("base_url", config.local_base_url)

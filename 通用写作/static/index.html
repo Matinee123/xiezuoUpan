@@ -109,7 +109,6 @@
         <select id="engineSelect" onchange="onEngineChange()">
           <option value="deepseek">DeepSeek (云端，中文首选)</option>
           <option value="greenapi">Green-API (API 中转)</option>
-          <option value="ollama">Ollama (本地离线)</option>
           <option value="local">本地模型 (U盘内置)</option>
           <option value="custom">自定义 API</option>
         </select>
@@ -123,10 +122,6 @@
         <div class="form-group"><label>接口地址</label><input type="text" id="greenapiBaseUrl" placeholder="https://api.martin007.top/v1" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">Green-API 接口地址，可自由修改为其他中转站</div></div>
         <div class="form-group"><label>API 密钥</label><input type="password" id="greenapiApiKey" placeholder="sk-xxx" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">填写 API 密钥</div></div>
         <div class="form-group"><label>模型名称</label><div style="display:flex;gap:6px;"><input type="text" id="greenapiModel" placeholder="gpt-4o-mini" readonly onfocus="this.removeAttribute('readonly')" style="flex:1;"><button class="btn btn-xs" onclick="fetchGreenModels()" title="从接口获取可用模型列表">🔍 搜索</button></div><div class="form-hint">手动输入模型名，或点击搜索获取可用模型列表</div></div>
-      </div>
-      <div id="fieldsOllama" class="engine-fields" style="display:none">
-        <div class="form-group"><label>接口地址</label><div class="readonly-url">http://localhost:11434/v1</div><div class="form-hint">本地 Ollama 服务地址</div></div>
-        <div class="form-group"><label>模型名称</label><input type="text" id="ollamaModel" placeholder="qwen2.5:latest" readonly onfocus="this.removeAttribute('readonly')"><div class="form-hint">已安装的模型名</div></div>
       </div>
       <div id="fieldsLocal" class="engine-fields" style="display:none">
         <div class="form-group"><label>接口地址</label><div class="readonly-url">http://127.0.0.1:8088/v1</div></div>
