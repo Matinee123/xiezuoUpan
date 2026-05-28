@@ -279,6 +279,8 @@ class APIHandler(SimpleHTTPRequestHandler):
         elif path == "/api/chat":
             messages = body.get("messages", [])
             try:
+                if config.engine == "local":
+                    self._ensure_local_ready()
                 reply = call_llm(messages, config)
                 self._json_response({"reply": reply})
             except LLMError as e:
@@ -303,6 +305,8 @@ class APIHandler(SimpleHTTPRequestHandler):
             messages = [{"role": "system", "content": system_prompt}]
             messages.append({"role": "user", "content": prompt})
             try:
+                if config.engine == "local":
+                    self._ensure_local_ready()
                 reply = call_llm(messages, config, temperature=0.7, max_tokens=8192)
                 self._json_response({"content": reply})
             except LLMError as e:
@@ -316,6 +320,8 @@ class APIHandler(SimpleHTTPRequestHandler):
                 {"role": "user", "content": f"以下是我已经写的内容：\n\n{content}\n\n请继续写下去："}
             ]
             try:
+                if config.engine == "local":
+                    self._ensure_local_ready()
                 reply = call_llm(messages, config)
                 self._json_response({"content": reply})
             except LLMError as e:
@@ -330,6 +336,8 @@ class APIHandler(SimpleHTTPRequestHandler):
                 {"role": "user", "content": content}
             ]
             try:
+                if config.engine == "local":
+                    self._ensure_local_ready()
                 reply = call_llm(messages, config)
                 self._json_response({"content": reply})
             except LLMError as e:
@@ -431,6 +439,15 @@ class APIHandler(SimpleHTTPRequestHandler):
             templates_dir = self.version_dir / "templates"
             self.template_engine = TemplateEngine(prompts_dir, templates_dir)
         return self.template_engine
+
+    def _ensure_local_ready(self):
+        """确保本地模型已启动"""
+        from .local_llm import is_running, start_server
+        if not is_running():
+            start_server()
+            time.sleep(0.5)
+            return is_running()
+        return True
 
     def _read_body(self):
         length = int(self.headers.get("Content-Length", 0))

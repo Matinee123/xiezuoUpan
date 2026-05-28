@@ -30,7 +30,7 @@ function switchVersion(id, name, theme) {
   document.getElementById("editorPage").style.display = "flex";
   document.getElementById("verTitle").textContent = name;
   document.getElementById("app").setAttribute("data-theme", id);
-  fetch("/api/config").then(r=>r.json()).then(d=>{ document.getElementById("engineStatus").textContent="引擎: "+d.engine; }).catch(()=>{});
+  fetch("/api/config").then(r=>r.json()).then(d=>{ document.getElementById("engineStatus").textContent=getEngineLabel(d); }).catch(()=>{});
   loadDocs(); loadTemplates(); switchSidebar("wizard");
   document.getElementById("aiMessages").innerHTML = "";
   addSystemMsg("欢迎使用"+name+"。选择左侧模板，填写信息后点智能生成。");
@@ -109,13 +109,13 @@ async function aiGenerateWizard() {
   });
   prompt += wordCountHint + "\n要求：格式规范，内容完整，直接输出成文。";
   document.getElementById("editor").value = prompt;
-  setLoading(true); addUserMsg("智能生成【"+currentTemplate.name+"】");
+  setLoading(true); addUserMsg("智能生成【"+currentTemplate.name+"】"); var tid=addThinkingMsg();
   try {
     const r = await fetch("/api/generate", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({prompt, version:currentVersion, template:currentTemplate.name}) });
     const data = await r.json();
-    if (data.content) { document.getElementById("editor").value=data.content; addAssistantMsg("【"+currentTemplate.name+"】生成完成。"); await saveDoc(); }
-    else if (data.error) addAssistantMsg("错误："+data.error);
-  } catch(e) { addAssistantMsg("请求失败："+e.message); }
+    if (data.content) { removeThinkingMsg(tid); document.getElementById("editor").value=data.content; addAssistantMsg("【"+currentTemplate.name+"】生成完成。"); await saveDoc(); }
+    else if (data.error) { removeThinkingMsg(tid); addAssistantMsg("错误："+data.error); }
+  } catch(e) { removeThinkingMsg(tid); addAssistantMsg("请求失败："+e.message); }
   setLoading(false);
 }
 
@@ -136,21 +136,21 @@ async function deleteDoc() { if(!currentDocId)return; if(!confirm("确定删除�
 async function aiGenerate() {
   const prompt = document.getElementById("editor").value.trim();
   if (!prompt) { addSystemMsg("请先在编辑区输入写作需求。"); return; }
-  setLoading(true); addUserMsg("生成文章："+prompt.substring(0,100));
-  try { const r=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,version:currentVersion})}); const d=await r.json(); if(d.content){document.getElementById("editor").value=d.content;addAssistantMsg("文章生成完成。");await saveDoc();}else if(d.error)addAssistantMsg("错误："+d.error); } catch(e){addAssistantMsg("请求失败："+e.message);}
+  setLoading(true); addUserMsg("生成文章："+prompt.substring(0,100)); var tid=addThinkingMsg();
+  try { const r=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,version:currentVersion})}); const d=await r.json(); if(d.content){removeThinkingMsg(tid);document.getElementById("editor").value=d.content;addAssistantMsg("文章生成完成。");await saveDoc();}else if(d.error){removeThinkingMsg(tid);addAssistantMsg("错误："+d.error);} } catch(e){removeThinkingMsg(tid);addAssistantMsg("请求失败："+e.message);}
   setLoading(false);
 }
 async function aiContinue() {
   const content=document.getElementById("editor").value.trim(); if(!content){addSystemMsg("请先写一些内容。");return;}
-  setLoading(true); addUserMsg("续写当前内容...");
-  try { const r=await fetch("/api/continue",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content:content.substring(0,3000)})}); const d=await r.json(); if(d.content){document.getElementById("editor").value+="\n\n"+d.content;addAssistantMsg("续写完成。");await saveDoc();}else if(d.error)addAssistantMsg("错误："+d.error); } catch(e){addAssistantMsg("请求失败："+e.message);}
+  setLoading(true); addUserMsg("续写当前内容..."); var tid=addThinkingMsg();
+  try { const r=await fetch("/api/continue",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content:content.substring(0,3000)})}); const d=await r.json(); if(d.content){removeThinkingMsg(tid);document.getElementById("editor").value+="\n\n"+d.content;addAssistantMsg("续写完成。");await saveDoc();}else if(d.error){removeThinkingMsg(tid);addAssistantMsg("错误："+d.error);} } catch(e){removeThinkingMsg(tid);addAssistantMsg("请求失败："+e.message);}
   setLoading(false);
 }
 async function aiRewrite() {
   const content=document.getElementById("editor").value.trim(); if(!content){addSystemMsg("请先写一些内容。");return;}
   const style=prompt("请输入改写要求","更通顺流畅"); if(!style)return;
-  setLoading(true); addUserMsg("改写："+style);
-  try { const r=await fetch("/api/rewrite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content:content.substring(0,3000),style})}); const d=await r.json(); if(d.content){document.getElementById("editor").value=d.content;addAssistantMsg("改写完成。");await saveDoc();}else if(d.error)addAssistantMsg("错误："+d.error); } catch(e){addAssistantMsg("请求失败："+e.message);}
+  setLoading(true); addUserMsg("改写："+style); var tid=addThinkingMsg();
+  try { const r=await fetch("/api/rewrite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content:content.substring(0,3000),style})}); const d=await r.json(); if(d.content){removeThinkingMsg(tid);document.getElementById("editor").value=d.content;addAssistantMsg("改写完成。");await saveDoc();}else if(d.error){removeThinkingMsg(tid);addAssistantMsg("错误："+d.error);} } catch(e){removeThinkingMsg(tid);addAssistantMsg("请求失败："+e.message);}
   setLoading(false);
 }
 async function aiChat() {
@@ -158,8 +158,8 @@ async function aiChat() {
   const content=document.getElementById("editor").value.trim();
   const messages=[{role:"system",content:"你是一个专业的写作助手。"}];
   if(content) messages.push({role:"user",content:"当前正在写的文章：\n"+content.substring(0,1000)});
-  messages.push({role:"user",content:text});
-  try { const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages})}); const d=await r.json(); if(d.reply)addAssistantMsg(d.reply);else if(d.error)addAssistantMsg("错误："+d.error); } catch(e){addAssistantMsg("请求失败："+e.message);}
+  messages.push({role:"user",content:text}); var tid=addThinkingMsg();
+  try { const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages})}); const d=await r.json(); if(d.reply){removeThinkingMsg(tid);addAssistantMsg(d.reply);}else if(d.error){removeThinkingMsg(tid);addAssistantMsg("错误："+d.error);} } catch(e){removeThinkingMsg(tid);addAssistantMsg("请求失败："+e.message);}
   setLoading(false);
 }
 
@@ -188,10 +188,11 @@ function previewDoc(){const t=document.getElementById("docTitle").value||"未命
 function closePreview(){document.getElementById("previewModal").style.display="none";}
 
 // ======== 设置 ========
+function getEngineLabel(d){var e=d.engine||"";var m=d.deepseek_model||d.greenapi_model||d.custom_model||d.local_model||d.model||"";var names={deepseek:"DeepSeek",greenapi:"Green-API",local:"本地",custom:"自定义",ollama:"Ollama"};var label="引擎: "+(names[e]||e);if(m&&e==="local"){m=m.replace(".gguf","");if(m.length>18)m=m.substring(0,16)+"..";}if(m)label+=" · "+m;return label;}
 function showSettings(){document.getElementById("settingsModal").style.display="flex";fetch("/api/config").then(r=>r.json()).then(d=>{document.getElementById("engineSelect").value=d.engine;document.getElementById("deepseekApiKey").value=d.deepseek_api_key||"";document.getElementById("deepseekModel").value=d.deepseek_model||"";document.getElementById("greenapiApiKey").value=d.greenapi_api_key||"";document.getElementById("greenapiModel").value=d.greenapi_model||"";document.getElementById("greenapiBaseUrl").value=d.greenapi_base_url||"";document.getElementById("customBaseUrl").value=d.custom_base_url||"";document.getElementById("customApiKey").value=d.custom_api_key||"";document.getElementById("customModel").value=d.custom_model||"";onEngineChange();}).catch(()=>{});fetch("/api/local-models").then(r=>r.json()).then(models=>{var sel=document.getElementById("localModelSelect");if(!sel)return;sel.innerHTML=models.map(function(m){return'<option value="'+m.file+'">'+m.name+' ('+m.size_mb+'MB)</option>';}).join("");if(models.length===0)sel.innerHTML='<option value="">未发现模型文件 (放入 _models/)</option>';}).catch(()=>{});fetch("/api/recommended-models").then(r=>r.json()).then(renderRecommendedModels).catch(()=>{});}
 function onEngineChange(){const e=document.getElementById("engineSelect").value;document.querySelectorAll(".engine-fields").forEach(el=>el.style.display="none");const m={deepseek:"fieldsDeepseek",greenapi:"fieldsGreenapi",custom:"fieldsCustom",local:"fieldsLocal"};const t=document.getElementById(m[e]);if(t)t.style.display="block";}
 function closeSettings(){document.getElementById("settingsModal").style.display="none";}
-async function saveSettings(){const e=document.getElementById("engineSelect").value;const b={engine:e};if(e==="deepseek"){b.api_key=document.getElementById("deepseekApiKey").value.trim();b.model=document.getElementById("deepseekModel").value.trim();}else if(e==="greenapi"){b.base_url=document.getElementById("greenapiBaseUrl").value.trim();b.api_key=document.getElementById("greenapiApiKey").value.trim();b.model=document.getElementById("greenapiModel").value.trim();}else if(e==="local"){b.model=document.getElementById("localModelSelect").value.trim();showToast("正在启动本地模型...");}else if(e==="custom"){b.base_url=document.getElementById("customBaseUrl").value.trim();b.api_key=document.getElementById("customApiKey").value.trim();b.model=document.getElementById("customModel").value.trim();}try{const r=await fetch("/api/switch-engine",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});const d=await r.json();if(d.ok){document.getElementById("engineStatus").textContent="引擎: "+e;showToast("已切换到: "+e);closeSettings();}else if(d.error)alert(d.error);}catch(er){alert("切换失败:"+er.message);}}
+async function saveSettings(){const e=document.getElementById("engineSelect").value;const b={engine:e};if(e==="deepseek"){b.api_key=document.getElementById("deepseekApiKey").value.trim();b.model=document.getElementById("deepseekModel").value.trim();}else if(e==="greenapi"){b.base_url=document.getElementById("greenapiBaseUrl").value.trim();b.api_key=document.getElementById("greenapiApiKey").value.trim();b.model=document.getElementById("greenapiModel").value.trim();}else if(e==="local"){b.model=document.getElementById("localModelSelect").value.trim();showToast("正在启动本地模型...");}else if(e==="custom"){b.base_url=document.getElementById("customBaseUrl").value.trim();b.api_key=document.getElementById("customApiKey").value.trim();b.model=document.getElementById("customModel").value.trim();}try{const r=await fetch("/api/switch-engine",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});const d=await r.json();if(d.ok){document.getElementById("engineStatus").textContent=getEngineLabel(b);showToast("已切换到: "+e);closeSettings();}else if(d.error)alert(d.error);}catch(er){alert("切换失败:"+er.message);}}
 
 // ======== 升级 ========
 let upgradeData=null;
@@ -204,6 +205,8 @@ async function doUpgrade(){if(!upgradeData||!upgradeData.download_url)return;doc
 // ======== AI 面板 ========
 function toggleAIPanel(){const b=document.getElementById("aiPanelBody");const s=document.getElementById("aiPanel");const btn=document.getElementById("aiToggleBtn");if(b.style.display==="none"){b.style.display="flex";s.style.width="360px";s.style.minWidth="";btn.innerHTML="收起 ▲";}else{b.style.display="none";s.style.width="40px";s.style.minWidth="40px";btn.innerHTML="展开 ▼";}}
 function addUserMsg(text){const m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg user"><span class="msg-label">你</span>'+escapeHtml(text)+'</div>';m.scrollTop=m.scrollHeight;}
+function addThinkingMsg(){var tid="think_"+Date.now();var m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg thinking" id="'+tid+'"><span class="msg-label">🤔 AI</span>正在思考...</div>';m.scrollTop=m.scrollHeight;return tid;}
+function removeThinkingMsg(tid){var el=document.getElementById(tid);if(el)el.remove();}
 function addAssistantMsg(text){const m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg assistant"><span class="msg-label">AI</span>'+escapeHtml(text)+'</div>';m.scrollTop=m.scrollHeight;}
 function addSystemMsg(text){const m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg" style="background:transparent;text-align:center;color:var(--text-dim);font-size:12px;">'+escapeHtml(text)+'</div>';m.scrollTop=m.scrollHeight;}
 
