@@ -23,6 +23,8 @@ def list_models():
         return []
     result = []
     for f in sorted(MODELS_DIR.glob("*.gguf")):
+        if f.name.startswith("mmproj-"):
+            continue
         result.append({
             "file": f.name,
             "name": f.stem,
@@ -63,15 +65,19 @@ def start_server(model_path=None):
     try:
         local_process = subprocess.Popen(
             [exe, "-m", model_path, "--port", str(DEFAULT_PORT), "--host", "127.0.0.1", "-ngl", "0"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
             cwd=str(MODELS_DIR)
         )
-        # Wait for server to be ready
-        for _ in range(30):
+        for _ in range(120):
             time.sleep(0.5)
             if is_running():
-                return True, f"本地模型已启动 (端口 {DEFAULT_PORT})"
-        return False, "模型启动超时"
+                return True, "本地模型已启动"
+            if local_process.poll() is not None:
+                err = local_process.stderr.read().decode("utf-8", errors="replace").strip()
+                return False, f"启动失败(进程退出): {err[:200]}"
+        local_process.terminate()
+        err = local_process.stderr.read().decode("utf-8", errors="replace").strip()
+        return False, f"启动超时(60秒): {err[:200]}"
     except Exception as e:
         return False, f"启动失败: {e}"
 

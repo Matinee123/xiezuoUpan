@@ -359,11 +359,12 @@ class APIHandler(SimpleHTTPRequestHandler):
                 else:
                     mp = find_model()
                 if not mp:
-                    self._json_response({"error": "未找到模型文件，请先安装或下载模型", "engine": config.engine}, 500)
+                    self._json_response({"error": "未找到模型文件，请先下载 .gguf 放入 _models/", "engine": config.engine}, 500)
                     return
-                import threading
-                threading.Thread(target=start_server, args=(mp,), daemon=True).start()
-                time.sleep(0.5)
+                ok, msg = start_server(mp)
+                if not ok:
+                    self._json_response({"error": msg, "engine": config.engine}, 500)
+                    return
             config.engine = engine
             if engine == "deepseek":
                 config.deepseek_api_key = body.get("api_key", config.deepseek_api_key)
@@ -378,7 +379,6 @@ class APIHandler(SimpleHTTPRequestHandler):
                 config.local_model = body.get("model", config.local_model)
                 config.local_base_url = body.get("base_url", config.local_base_url)
                 if not config.local_model:
-                    from .local_llm import find_model
                     from pathlib import Path
                     m = find_model()
                     if m:
