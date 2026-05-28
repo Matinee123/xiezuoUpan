@@ -283,7 +283,9 @@ class APIHandler(SimpleHTTPRequestHandler):
             messages = body.get("messages", [])
             try:
                 if config.engine == "local":
-                    self._ensure_local_ready()
+                    if not self._ensure_local_ready():
+                        self._json_response({"error": "本地模型启动失败，请重试"}, 503)
+                        return
                 reply = call_llm(messages, config)
                 self._json_response({"reply": reply})
             except LLMError as e:
@@ -309,7 +311,9 @@ class APIHandler(SimpleHTTPRequestHandler):
             messages.append({"role": "user", "content": prompt})
             try:
                 if config.engine == "local":
-                    self._ensure_local_ready()
+                    if not self._ensure_local_ready():
+                        self._json_response({"error": "本地模型启动失败，请重试"}, 503)
+                        return
                 reply = call_llm(messages, config, temperature=0.7, max_tokens=8192)
                 self._json_response({"content": reply})
             except LLMError as e:
@@ -324,7 +328,9 @@ class APIHandler(SimpleHTTPRequestHandler):
             ]
             try:
                 if config.engine == "local":
-                    self._ensure_local_ready()
+                    if not self._ensure_local_ready():
+                        self._json_response({"error": "本地模型启动失败，请重试"}, 503)
+                        return
                 reply = call_llm(messages, config)
                 self._json_response({"content": reply})
             except LLMError as e:
@@ -340,7 +346,9 @@ class APIHandler(SimpleHTTPRequestHandler):
             ]
             try:
                 if config.engine == "local":
-                    self._ensure_local_ready()
+                    if not self._ensure_local_ready():
+                        self._json_response({"error": "本地模型启动失败，请重试"}, 503)
+                        return
                 reply = call_llm(messages, config)
                 self._json_response({"content": reply})
             except LLMError as e:

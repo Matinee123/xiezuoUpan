@@ -65,7 +65,7 @@ def call_llm(messages, config, stream=False, temperature=0.7, max_tokens=4096):
             raise LLMError(f"API 返回异常: {json.dumps(result, ensure_ascii=False)}")
 
         content = result["choices"][0]["message"]["content"]
-        if not content.strip() and is_local and attempt < max_retries - 1:
+        if len(content.strip()) < 5 and is_local and attempt < max_retries - 1:
             continue
 
         return content
