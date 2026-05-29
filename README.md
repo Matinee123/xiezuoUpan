@@ -118,6 +118,10 @@ xiezuoUpan/
 
 **Q：能自己加模板？** A：在 `templates/` 下新建 JSON，参照已有格式。
 
+**Q：导出 Word/PDF 时 360 报毒？** A：安全软件误报。将写作台文件夹加入 360 白名单：设置 → 文件白名单 → 添加 `xiezuoUpan` 目录。
+
+**Q：如需发布新版本？** A：运行 `python release.py` 自动更新版本号并生成 zip，然后 `git push --tags`。
+
 ## License
 
 [MIT](LICENSE) © 2026 Matinee123
