@@ -1,12 +1,13 @@
 {
-  "version": "1.1.20",
-  "build": 20,
+  "version": "1.2.3",
+  "build": 3,
   "release_date": "2026-05-28",
   "min_compatible_version": "1.0.0",
   "update_url": "https://api.github.com/repos/Matinee123/xiezuoUpan/releases/latest",
   "changelog": {
     "1.0.0": "首发版: 8个行业57个模板",
     "1.1.0": "离线本地大模型引擎(llama.cpp+千问)",
-    "1.1.20": "模型加载JSON修复+启动保护"
+    "1.2.0": "AI对话面板重写+残留进程修复",
+    "1.2.3": "文章一闪而过根除+首次生成失败修复+JSON保护"
   }
 }

@@ -13,7 +13,7 @@ HERE = Path(__file__).resolve().parent
 def main():
     print()
     print("========================================")
-    print("   AI 写作工作台 v1.0.0")
+    print("   AI 写作工作台 v1.2.3")
     print("========================================")
     print()
 
