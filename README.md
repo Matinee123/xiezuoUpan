@@ -120,6 +120,8 @@ xiezuoUpan/
 
 **Q：导出 Word/PDF 时 360 报毒？** A：安全软件误报。将写作台文件夹加入 360 白名单：设置 → 文件白名单 → 添加 `xiezuoUpan` 目录。
 
+**Q：360 拦截 llama-server.exe？** A：360 USB 防护策略：U盘里的 .exe 一律拦截，不是病毒。将 `_models\llama-server.exe` 加入 360 信任区即可。
+
 **Q：如需发布新版本？** A：运行 `python release.py` 自动更新版本号并生成 zip，然后 `git push --tags`。
 
 ## License
