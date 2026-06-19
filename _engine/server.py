@@ -21,6 +21,8 @@ class APIHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/health":
             self._json_response({"status": "ok", "version": "1.0.0", "engine": config.engine})
+        elif self.path == "/api/has-key":
+            self._json_response({"has_key": config.has_active_key(), "engine": config.engine})
         elif self.path == "/api/config":
             self._json_response({
                 "engine": config.engine,
