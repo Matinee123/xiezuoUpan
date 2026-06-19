@@ -5,7 +5,8 @@ from pathlib import Path
 from .config import config
 from .docstore import docstore
 from .llm import call_llm, LLMError
-from .export import export_markdown, export_html
+from .export import export_markdown, export_html, export_wechat_html
+from .updater import check_update, apply_update
 from .template import TemplateEngine
 
 HERE = Path(__file__).resolve().parent.parent
@@ -23,6 +24,8 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._json_response({"status": "ok", "version": "1.0.0", "engine": config.engine})
         elif self.path == "/api/has-key":
             self._json_response({"has_key": config.has_active_key(), "engine": config.engine})
+        elif self.path == "/api/check-update":
+            self._json_response(check_update())
         elif self.path == "/api/config":
             self._json_response({
                 "engine": config.engine,
@@ -148,6 +151,13 @@ class APIHandler(SimpleHTTPRequestHandler):
                 self._json_response({"ok": True, "engine": engine})
             else:
                 self._json_response({"error": f"不支持的引擎: {engine}"}, 400)
+        elif self.path == "/api/apply-update":
+            download_url = body.get("download_url", "")
+            if not download_url:
+                self._json_response({"error": "下载地址不能为空"}, 400)
+                return
+            result = apply_update(download_url)
+            self._json_response(result)
         else:
             self._json_response({"error": "Not Found"}, 404)
 
