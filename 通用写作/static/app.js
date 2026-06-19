@@ -1,235 +1,362 @@
-let currentDocId = null, allDocs = [], currentVersion = null, currentTemplate = null;
+﻿let currentDocId = null;
+let allDocs = [];
 
 // ======== 初始化 ========
 async function init() {
-  document.getElementById("homePage").style.display = "flex";
-  document.getElementById("editorPage").style.display = "none";
-  loadVersions();
-  fetch("/api/version").then(r=>r.json()).then(d=>{ document.getElementById("verBadge").textContent="v"+d.version; }).catch(()=>{});
+  await loadVersion();
+  await loadDocs();
+  await loadConfig();
+  setupAutoPreview();
+  addSystemMsg("欢迎使用 AI 写作工作台。在左侧新建文档，或在下方输入写作指令。");
 }
 init();
 
-// ======== 版本选择 ========
-async function loadVersions() {
+// ======== 版本号 ========
+async function loadVersion() {
   try {
-    const r = await fetch("/api/versions");
-    renderCards(await r.json());
-  } catch(e) {}
-}
-
-function renderCards(versions) {
-  const grid = document.getElementById("cardGrid");
-  grid.innerHTML = versions.map(v =>
-    '<div class="version-card" onclick="switchVersion(\''+v.id+'\',\''+v.name+'\',\''+v.theme+'\')"><div class="card-icon">'+v.icon+'</div><div class="card-name">'+v.name+'</div><div class="card-desc">'+v.desc+'</div></div>'
-  ).join("");
-}
-
-function switchVersion(id, name, theme) {
-  currentVersion = id; currentTemplate = null;
-  document.getElementById("homePage").style.display = "none";
-  document.getElementById("editorPage").style.display = "flex";
-  document.getElementById("verTitle").textContent = name;
-  document.getElementById("app").setAttribute("data-theme", id);
-  fetch("/api/config").then(r=>r.json()).then(d=>{ document.getElementById("engineStatus").textContent=getEngineLabel(d); }).catch(()=>{});
-  loadDocs(); loadTemplates(); switchSidebar("wizard");
-  document.getElementById("aiMessages").innerHTML = "";
-  addSystemMsg("欢迎使用"+name+"。选择左侧模板，填写信息后点智能生成。");
-}
-
-function goHome() {
-  currentVersion = null; currentTemplate = null;
-  document.getElementById("editorPage").style.display = "none";
-  document.getElementById("homePage").style.display = "flex";
-  document.getElementById("app").removeAttribute("data-theme");
-}
-
-function switchSidebar(tab) {
-  document.getElementById("wizardPanel").style.display = (tab==="wizard")?"block":"none";
-  document.getElementById("docsPanel").style.display = (tab==="docs")?"flex":"none";
-  document.getElementById("tabWizard").classList.toggle("active", tab==="wizard");
-  document.getElementById("tabDocs").classList.toggle("active", tab==="docs");
-}
-
-// ======== 写作向导 ========
-async function loadTemplates() {
-  try {
-    const url = "/api/templates?v="+(currentVersion||"general");
-    const r = await fetch(url); const data = await r.json();
-    const sel = document.getElementById("templateSelect");
-    sel.innerHTML = '<option value="">自由写作</option>';
-    data.forEach(t => { sel.innerHTML += '<option value="'+t.name+'">'+t.name+'</option>'; });
-    onTemplateChange();
-  } catch(e) {}
-}
-
-function onTemplateChange() {
-  const name = document.getElementById("templateSelect").value;
-  if (!name) { document.getElementById("wizardFields").innerHTML=""; document.getElementById("wizardGenerateBtn").style.display="none"; currentTemplate=null; return; }
-  const url = "/api/template/"+encodeURIComponent(name)+"?v="+(currentVersion||"general");
-  fetch(url).then(r=>r.json()).then(t => {
-    if (t.fields) { currentTemplate = {name:name,fields:t.fields}; renderFields(t.fields, t.example); }
-    else { document.getElementById("wizardFields").innerHTML=""; document.getElementById("wizardGenerateBtn").style.display="none"; }
-  }).catch(()=>{ document.getElementById("wizardFields").innerHTML='<div class="wizard-field-hint" style="text-align:center;padding:20px;">加载失败</div>'; });
-}
-
-function renderFields(fields, example) {
-  const TEXTAREA_IDS = "body items points actions problems plan agenda decisions tasks requirements background reason content features rights understanding claims facts evidence defense_points counter_evidence demands analysis risks suggestions missing legal_analysis evidence_analysis rebuttal grounds errors evidence_groups evidence_items scope legal_basis opinion appeal_claims";
-  const container = document.getElementById("wizardFields");
-  let html = fields.map(f => {
-    let inputHtml;
-    if (f.type === "select") {
-      inputHtml = '<select class="wizard-field-input" id="wf_'+f.id+'">'+f.options.map(o=>'<option value="'+o+'">'+o+'</option>').join("")+'</select>';
-    } else if (TEXTAREA_IDS.indexOf(f.id) >= 0) {
-      inputHtml = '<textarea class="wizard-field-input" id="wf_'+f.id+'" rows="3" placeholder="'+(f.hint||"")+'"></textarea>';
-    } else {
-      inputHtml = '<input type="text" class="wizard-field-input" id="wf_'+f.id+'" placeholder="'+(f.hint||"")+'">';
-    }
-    return '<div class="wizard-field"><label class="wizard-field-label">'+f.label+(f.required?'<span class="required">*</span>':"")+'</label>'+inputHtml+(f.hint?'<div class="wizard-field-hint">'+f.hint+'</div>':"")+'</div>';
-  }).join("");
-  if (example) {
-    html += '<div class="wizard-example" onclick="this.classList.toggle(\'open\')"><div class="wizard-example-header">💡 参考范例（点击展开）</div><div class="wizard-example-content">'+example.replace(/\n/g,"<br>")+'</div></div>';
-  }
-  container.innerHTML = html;
-  document.getElementById("wizardGenerateBtn").style.display = "block";
-}
-
-async function aiGenerateWizard() {
-  if (!currentTemplate) return;
-  let prompt = "请根据以下信息撰写一份专业的【"+currentTemplate.name+"】：\n\n";
-  let wordCountHint = "";
-  currentTemplate.fields.forEach(f => {
-    const el = document.getElementById("wf_"+f.id);
-    if (!el) return;
-    const val = el.tagName==="SELECT"?el.options[el.selectedIndex].text:el.value.trim();
-    if (!val) return;
-    if (f.id==="word_count") { wordCountHint = "\n请将篇幅控制在"+val+"左右。\n"; prompt += f.label+"："+val+"\n"; }
-    else if (f.id==="tone") { prompt += f.label+"：采用【"+val+"】的语言风格\n"; }
-    else if (f.id==="perspective") { prompt += "写作视角：以【"+val+"】的角度撰写\n"; }
-    else { prompt += f.label+"："+val+"\n"; }
-  });
-  prompt += wordCountHint + "\n要求：格式规范，内容完整，直接输出成文。";
-  document.getElementById("editor").value = prompt;
-  setLoading(true); addUserMsg("智能生成【"+currentTemplate.name+"】"); var tid=addThinkingMsg();
-  try {
-    const r = await fetch("/api/generate", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({prompt, version:currentVersion, template:currentTemplate.name}) });
+    const r = await fetch("/api/version");
     const data = await r.json();
-    if (data.content) { removeThinkingMsg(tid); document.getElementById("editor").value=prompt+"\n\n---\n\n"+data.content; addAssistantMsg("【"+currentTemplate.name+"】生成完成。"); await saveDoc(); }
-    else if (data.error) { removeThinkingMsg(tid); addAssistantMsg("错误："+data.error); }
-  } catch(e) { removeThinkingMsg(tid); addAssistantMsg("请求失败："+e.message); }
-  setLoading(false);
+    document.getElementById("versionBadge").textContent = "v" + data.version;
+  } catch(e) {}
+}
+
+// ======== 配置 ========
+async function loadConfig() {
+  try {
+    const r = await fetch("/api/config");
+    const data = await r.json();
+    document.getElementById("engineStatus").textContent = "引擎: " + data.engine;
+    document.getElementById("engineSelect").value = data.engine;
+  } catch(e) {}
 }
 
 // ======== 文档管理 ========
-async function loadDocs() { try { const r=await fetch("/api/documents"); allDocs=await r.json(); renderDocList(); } catch(e){} }
+async function loadDocs() {
+  try {
+    const r = await fetch("/api/documents");
+    allDocs = await r.json();
+    renderDocList();
+  } catch(e) {}
+}
+
 function renderDocList() {
   const list = document.getElementById("docList");
-  list.innerHTML = allDocs.map(d => '<div class="doc-item'+(d.id===currentDocId?" active":"")+'" onclick="openDoc(\''+d.id+'\')"><span class="doc-title-text">'+escapeHtml(d.title)+'</span><span class="doc-meta">'+formatTime(d.updated_at)+'</span></div>').join("");
+  list.innerHTML = allDocs.map(d => `
+    <div class="doc-item ${d.id === currentDocId ? 'active' : ''}" onclick="openDoc('${d.id}')">
+      <span class="doc-title-text">${escapeHtml(d.title)}</span>
+      <span class="doc-meta">${formatTime(d.updated_at)}</span>
+    </div>
+  `).join("");
 }
+
 async function newDoc() {
-  try { const r=await fetch("/api/documents",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:"未命名文档",content:""})}); const d=await r.json(); if(d.id){currentDocId=d.id;document.getElementById("docTitle").value="未命名文档";document.getElementById("editor").value="";await loadDocs();} } catch(e){alert("新建失败:"+e.message);}
+  try {
+    const r = await fetch("/api/documents", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({title: "未命名文档", content: ""})
+    });
+    const data = await r.json();
+    if (data.id) {
+      currentDocId = data.id;
+      document.getElementById("docTitle").value = "未命名文档";
+      document.getElementById("editor").value = "";
+      updatePreview();
+      await loadDocs();
+    }
+  } catch(e) { alert("新建失败: " + e.message); }
 }
-async function openDoc(id) { try { const r=await fetch("/api/documents/"+id); const d=await r.json(); if(d.error)return; currentDocId=d.id; document.getElementById("docTitle").value=d.title; document.getElementById("editor").value=d.content; renderDocList(); } catch(e){} }
-async function saveDoc() { const title=document.getElementById("docTitle").value||"未命名文档"; const content=document.getElementById("editor").value; if(!currentDocId){ const r=await fetch("/api/documents",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,content})}); const d=await r.json(); if(d.id){ currentDocId=d.id; showToast("已保存");await loadDocs(); } return; } try { const r=await fetch("/api/documents/"+currentDocId+"/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,content})}); const d=await r.json(); if(d.id){showToast("已保存");await loadDocs();} } catch(e){alert("保存失败:"+e.message);} }
-async function deleteDoc() { if(!currentDocId)return; if(!confirm("确定删除此文档？"))return; try { await fetch("/api/documents/"+currentDocId+"/delete",{method:"POST"}); currentDocId=null; document.getElementById("docTitle").value="未命名文档"; document.getElementById("editor").value="";await loadDocs(); } catch(e){alert("删除失败:"+e.message);} }
+
+async function openDoc(id) {
+  try {
+    const r = await fetch("/api/documents/" + id);
+    const doc = await r.json();
+    if (doc.error) return;
+    currentDocId = doc.id;
+    document.getElementById("docTitle").value = doc.title;
+    document.getElementById("editor").value = doc.content;
+    updatePreview();
+    renderDocList();
+  } catch(e) {}
+}
+
+async function saveDoc() {
+  if (!currentDocId) { await newDoc(); }
+  const title = document.getElementById("docTitle").value || "未命名文档";
+  const content = document.getElementById("editor").value;
+  try {
+    const r = await fetch("/api/documents/" + currentDocId + "/save", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({title, content})
+    });
+    const data = await r.json();
+    if (data.id) {
+      showToast("已保存");
+      await loadDocs();
+    }
+  } catch(e) { alert("保存失败: " + e.message); }
+}
+
+async function deleteDoc() {
+  if (!currentDocId) return;
+  if (!confirm("确定删除此文档？")) return;
+  try {
+    await fetch("/api/documents/" + currentDocId + "/delete", {method: "POST"});
+    currentDocId = null;
+    document.getElementById("docTitle").value = "未命名文档";
+    document.getElementById("editor").value = "";
+    updatePreview();
+    await loadDocs();
+  } catch(e) { alert("删除失败: " + e.message); }
+}
 
 // ======== AI 功能 ========
 async function aiGenerate() {
   const prompt = document.getElementById("editor").value.trim();
-  if (!prompt) { addSystemMsg("请先在编辑区输入写作需求。"); return; }
-  setLoading(true); addUserMsg("生成文章："+prompt.substring(0,100)); var tid=addThinkingMsg();
-  try { const r=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,version:currentVersion})}); const d=await r.json(); if(d.content){removeThinkingMsg(tid);document.getElementById("editor").value=prompt+"\n\n---\n\n"+d.content;addAssistantMsg("文章生成完成。");await saveDoc();}else if(d.error){removeThinkingMsg(tid);addAssistantMsg("错误："+d.error);} } catch(e){removeThinkingMsg(tid);addAssistantMsg("请求失败："+e.message);}
+  if (!prompt) {
+    addSystemMsg("请先在编辑区输入写作需求，或在下方的 AI 对话中输入。");
+    return;
+  }
+  setLoading(true);
+  addUserMsg("生成文章：" + prompt.substring(0, 100));
+  try {
+    const r = await fetch("/api/generate", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({prompt})
+    });
+    const data = await r.json();
+    if (data.content) {
+      document.getElementById("editor").value = data.content;
+      updatePreview();
+      addAssistantMsg("文章生成完成。");
+      await saveDoc();
+    } else if (data.error) {
+      addAssistantMsg("错误：" + data.error);
+    }
+  } catch(e) {
+    addAssistantMsg("请求失败：" + e.message);
+  }
   setLoading(false);
 }
+
 async function aiContinue() {
-  const content=document.getElementById("editor").value.trim(); if(!content){addSystemMsg("请先写一些内容。");return;}
-  setLoading(true); addUserMsg("续写当前内容..."); var tid=addThinkingMsg();
-  try { const r=await fetch("/api/continue",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content:content.substring(0,3000)})}); const d=await r.json(); if(d.content){removeThinkingMsg(tid);document.getElementById("editor").value+="\n\n"+d.content;addAssistantMsg("续写完成。");await saveDoc();}else if(d.error){removeThinkingMsg(tid);addAssistantMsg("错误："+d.error);} } catch(e){removeThinkingMsg(tid);addAssistantMsg("请求失败："+e.message);}
+  const content = document.getElementById("editor").value.trim();
+  if (!content) { addSystemMsg("请先写一些内容，再使用续写功能。"); return; }
+  setLoading(true);
+  addUserMsg("续写当前内容...");
+  try {
+    const r = await fetch("/api/continue", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({content: content.substring(0, 3000)})
+    });
+    const data = await r.json();
+    if (data.content) {
+      document.getElementById("editor").value += "\n\n" + data.content;
+      updatePreview();
+      addAssistantMsg("续写完成。");
+      await saveDoc();
+    } else if (data.error) {
+      addAssistantMsg("错误：" + data.error);
+    }
+  } catch(e) { addAssistantMsg("请求失败：" + e.message); }
   setLoading(false);
 }
+
 async function aiRewrite() {
-  const content=document.getElementById("editor").value.trim(); if(!content){addSystemMsg("请先写一些内容。");return;}
-  const style=prompt("请输入改写要求","更通顺流畅"); if(!style)return;
-  setLoading(true); addUserMsg("改写："+style); var tid=addThinkingMsg();
-  try { const r=await fetch("/api/rewrite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content:content.substring(0,3000),style})}); const d=await r.json(); if(d.content){removeThinkingMsg(tid);document.getElementById("editor").value=d.content;addAssistantMsg("改写完成。");await saveDoc();}else if(d.error){removeThinkingMsg(tid);addAssistantMsg("错误："+d.error);} } catch(e){removeThinkingMsg(tid);addAssistantMsg("请求失败："+e.message);}
+  const content = document.getElementById("editor").value.trim();
+  if (!content) { addSystemMsg("请先写一些内容，再使用改写功能。"); return; }
+  const style = prompt("请输入改写要求（如：更正式、更简洁、更生动等）", "更通顺流畅");
+  if (!style) return;
+  setLoading(true);
+  addUserMsg("改写：" + style);
+  try {
+    const r = await fetch("/api/rewrite", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({content: content.substring(0, 3000), style})
+    });
+    const data = await r.json();
+    if (data.content) {
+      document.getElementById("editor").value = data.content;
+      updatePreview();
+      addAssistantMsg("改写完成。");
+      await saveDoc();
+    } else if (data.error) {
+      addAssistantMsg("错误：" + data.error);
+    }
+  } catch(e) { addAssistantMsg("请求失败：" + e.message); }
   setLoading(false);
 }
+
 async function aiChat() {
-  const input=document.getElementById("aiInput"); const text=input.value.trim(); if(!text)return; input.value=""; addUserMsg(text); setLoading(true);
-  const content=document.getElementById("editor").value.trim();
-  const messages=[{role:"system",content:"你是一个专业的写作助手。"}];
-  if(content) messages.push({role:"user",content:"当前正在写的文章：\n"+content.substring(0,1000)});
-  messages.push({role:"user",content:text}); var tid=addThinkingMsg();
-  try { const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages})}); const d=await r.json(); if(d.reply){removeThinkingMsg(tid);addAssistantMsg(d.reply);}else if(d.error){removeThinkingMsg(tid);addAssistantMsg("错误："+d.error);} } catch(e){removeThinkingMsg(tid);addAssistantMsg("请求失败："+e.message);}
+  const input = document.getElementById("aiInput");
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+  addUserMsg(text);
+  setLoading(true);
+  const content = document.getElementById("editor").value.trim();
+  const messages = [
+    {role: "system", content: "你是一个专业的写作助手。请根据用户的需求提供写作建议、修改意见或直接撰写内容。"}
+  ];
+  if (content) {
+    messages.push({role: "user", content: `当前正在写的文章：\n${content.substring(0, 1000)}`});
+  }
+  messages.push({role: "user", content: text});
+  try {
+    const r = await fetch("/api/chat", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({messages})
+    });
+    const data = await r.json();
+    if (data.reply) {
+      addAssistantMsg(data.reply);
+    } else if (data.error) {
+      addAssistantMsg("错误：" + data.error);
+    }
+  } catch(e) { addAssistantMsg("请求失败：" + e.message); }
   setLoading(false);
 }
 
 // ======== 导出 ========
-async function doExport(format, style) {
-  const title=document.getElementById("docTitle").value||"未命名"; const content=document.getElementById("editor").value;
-  if(!content){alert("没有内容可导出");return;}
-  const body={title,content,format}; if(style)body.style=style;
+async function doExport(format) {
+  const title = document.getElementById("docTitle").value || "未命名";
+  const content = document.getElementById("editor").value;
+  if (!content) { alert("没有内容可导出"); return; }
   try {
-    const r=await fetch("/api/export",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); const d=await r.json();
-    if(format==="docx"||format==="pdf"){ if(d.download_url){window.open(d.download_url,"_blank");}else if(d.error)alert(d.error); }
-    else if(d.content){ document.getElementById("exportContent").value=d.content; document.getElementById("exportResult").style.display="block";
-      if(format==="wechat"){document.getElementById("exportPreview").srcdoc=d.content;document.getElementById("exportPreviewWrap").style.display="block";document.getElementById("exportContent").style.display="none";}
-      else{document.getElementById("exportPreviewWrap").style.display="none";document.getElementById("exportContent").style.display="block";}
-    }else if(d.error)alert("导出失败:"+d.error);
-  }catch(e){alert("导出失败:"+e.message);}
+    const r = await fetch("/api/export", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({title, content, format})
+    });
+    const data = await r.json();
+    if (data.content) {
+      document.getElementById("exportContent").value = data.content;
+      document.getElementById("exportResult").style.display = "block";
+    } else if (data.error) {
+      alert("导出失败: " + data.error);
+    }
+  } catch(e) { alert("导出失败: " + e.message); }
 }
-function showWechatStyle(){document.getElementById("exportResult").style.display="none";document.getElementById("wechatStylePanel").style.display="block";}
-function showExport(){document.getElementById("exportResult").style.display="none";document.getElementById("wechatStylePanel").style.display="none";document.getElementById("exportModal").style.display="flex";}
-function closeExport(){document.getElementById("exportModal").style.display="none";}
-function copyExport(){const el=document.getElementById("exportContent");el.select();document.execCommand("copy");showToast("已复制到剪贴板");}
-function searchDocs(){const q=document.getElementById("searchInput").value.trim();if(!q){loadDocs();return;}fetch("/api/search?q="+encodeURIComponent(q)).then(r=>r.json()).then(d=>{allDocs=d;renderDocList();}).catch(()=>{});}
 
-// ======== 预览 ========
-function previewDoc(){const t=document.getElementById("docTitle").value||"未命名";const c=document.getElementById("editor").value;document.getElementById("previewContent").innerHTML="<h2>"+escapeHtml(t)+"</h2><hr>"+c.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n\n/g,"</p><p>").replace(/\n/g,"<br>");document.getElementById("previewModal").style.display="flex";}
-function closePreview(){document.getElementById("previewModal").style.display="none";}
+function copyExport() {
+  const el = document.getElementById("exportContent");
+  el.select();
+  document.execCommand("copy");
+  showToast("已复制到剪贴板");
+}
 
 // ======== 设置 ========
-function getEngineLabel(d){var e=d.engine||"";var m=d.deepseek_model||d.greenapi_model||d.custom_model||d.local_model||d.model||"";var names={deepseek:"DeepSeek",greenapi:"Green-API",local:"本地",custom:"自定义",ollama:"Ollama"};var label="引擎: "+(names[e]||e);if(m&&e==="local"){m=m.replace(".gguf","");if(m.length>18)m=m.substring(0,16)+"..";}if(m)label+=" · "+m;return label;}
-function showSettings(){document.getElementById("settingsModal").style.display="flex";fetch("/api/config").then(r=>r.json()).then(d=>{document.getElementById("engineSelect").value=d.engine;document.getElementById("deepseekApiKey").value=d.deepseek_api_key||"";document.getElementById("deepseekModel").value=d.deepseek_model||"";document.getElementById("greenapiApiKey").value=d.greenapi_api_key||"";document.getElementById("greenapiModel").value=d.greenapi_model||"";document.getElementById("greenapiBaseUrl").value=d.greenapi_base_url||"";document.getElementById("customBaseUrl").value=d.custom_base_url||"";document.getElementById("customApiKey").value=d.custom_api_key||"";document.getElementById("customModel").value=d.custom_model||"";onEngineChange();}).catch(()=>{});fetch("/api/local-models").then(r=>r.json()).then(models=>{var sel=document.getElementById("localModelSelect");if(!sel)return;sel.innerHTML=models.map(function(m){return'<option value="'+m.file+'">'+m.name+' ('+m.size_mb+'MB)</option>';}).join("");if(models.length===0)sel.innerHTML='<option value="">未发现模型文件 (放入 _models/)</option>';}).catch(()=>{});fetch("/api/recommended-models").then(r=>r.json()).then(renderRecommendedModels).catch(()=>{});}
-function onEngineChange(){const e=document.getElementById("engineSelect").value;document.querySelectorAll(".engine-fields").forEach(el=>el.style.display="none");const m={deepseek:"fieldsDeepseek",greenapi:"fieldsGreenapi",custom:"fieldsCustom",local:"fieldsLocal"};const t=document.getElementById(m[e]);if(t)t.style.display="block";}
-function closeSettings(){document.getElementById("settingsModal").style.display="none";}
-async function saveSettings(){const e=document.getElementById("engineSelect").value;const b={engine:e};if(e==="deepseek"){b.api_key=document.getElementById("deepseekApiKey").value.trim();b.model=document.getElementById("deepseekModel").value.trim();}else if(e==="greenapi"){b.base_url=document.getElementById("greenapiBaseUrl").value.trim();b.api_key=document.getElementById("greenapiApiKey").value.trim();b.model=document.getElementById("greenapiModel").value.trim();}else if(e==="local"){b.model=document.getElementById("localModelSelect").value.trim();showToast("正在加载模型，请稍候...");var timer=document.createElement("div");timer.style.cssText="text-align:center;padding:12px;color:var(--accent);font-size:14px;font-weight:600;";timer.textContent="⏳ 模型加载中...";var foot=document.querySelector("#settingsModal .modal-footer");if(foot)foot.parentNode.insertBefore(timer,foot);var start=Date.now();var iv=setInterval(function(){var s=Math.round((Date.now()-start)/1000);timer.textContent="⏳ 模型加载中... "+s+"s";},1000);try{const r=await fetch("/api/switch-engine",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});clearInterval(iv);timer.textContent="✅ 模型已就绪 ("+Math.round((Date.now()-start)/1000)+"s)";setTimeout(function(){timer.remove();},1500);const d=await r.json();if(d.ok){document.getElementById("engineStatus").textContent=getEngineLabel(b);showToast("已切换到: "+e);closeSettings();}else if(d.error){timer.textContent="❌ "+d.error;setTimeout(function(){timer.remove();},3000);}}catch(er){clearInterval(iv);timer.textContent="❌ 切换失败";setTimeout(function(){timer.remove();},3000);}return;}else if(e==="custom"){b.base_url=document.getElementById("customBaseUrl").value.trim();b.api_key=document.getElementById("customApiKey").value.trim();b.model=document.getElementById("customModel").value.trim();}try{const r=await fetch("/api/switch-engine",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});const d=await r.json();if(d.ok){document.getElementById("engineStatus").textContent=getEngineLabel(b);showToast("已切换到: "+e);closeSettings();}else if(d.error)alert(d.error);}catch(er){alert("切换失败:"+er.message);}}
+function showSettings() {
+  document.getElementById("settingsModal").style.display = "flex";
+}
+function closeSettings() {
+  document.getElementById("settingsModal").style.display = "none";
+}
 
-// ======== 升级 ========
-let upgradeData=null;
-function showUpgrade(){document.getElementById("upgradeModal").style.display="flex";document.getElementById("upgHasUpdate").style.display="none";document.getElementById("upgNoUpdate").style.display="block";document.getElementById("upgCheckBtn").style.display="";document.getElementById("upgApplyBtn").style.display="none";document.getElementById("upgConfirm").checked=false;document.getElementById("upgProgress").style.display="none";upgradeData=null;fetch("/api/version").then(r=>r.json()).then(d=>{document.getElementById("upgCurrent").textContent="v"+d.version;}).catch(()=>{});}
-function closeUpgrade(){document.getElementById("upgradeModal").style.display="none";}
-async function checkUpdate(){const btn=document.getElementById("upgCheckBtn");btn.innerHTML='<span class="spinner"></span>检查中...';btn.disabled=true;try{const r=await fetch("/api/check-update");const d=await r.json();if(d.has_update){upgradeData=d;document.getElementById("upgLatest").textContent="v"+d.latest;document.getElementById("upgChangelog").textContent=d.changelog||"";document.getElementById("upgHasUpdate").style.display="block";document.getElementById("upgNoUpdate").style.display="none";document.getElementById("upgCheckBtn").style.display="none";document.getElementById("upgApplyBtn").style.display="";}else{document.getElementById("upgNoUpdate").innerHTML='<p style="color:var(--green);">✅ '+(d.message||"已是最新版本")+'</p>';}}catch(e){document.getElementById("upgNoUpdate").innerHTML='<p style="color:var(--red);">❌ 检查失败</p>';}btn.innerHTML="🔍 检查更新";btn.disabled=false;}
-function toggleUpgradeBtn(){const b=document.getElementById("upgApplyBtn");const c=document.getElementById("upgConfirm").checked;b.disabled=!c;b.style.opacity=c?"1":"0.4";}
-async function doUpgrade(){if(!upgradeData||!upgradeData.download_url)return;document.getElementById("upgProgress").style.display="block";document.getElementById("upgApplyBtn").disabled=true;document.getElementById("upgConfirm").disabled=true;const bar=document.getElementById("upgBar");const st=document.getElementById("upgStatus");st.textContent="正在下载...";bar.style.width="30%";try{const r=await fetch("/api/apply-update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({download_url:upgradeData.download_url})});const d=await r.json();if(d.ok){bar.style.width="100%";st.textContent=d.message;st.style.color="var(--green)";document.getElementById("upgHasUpdate").style.display="none";document.getElementById("upgNoUpdate").style.display="block";document.getElementById("upgNoUpdate").innerHTML='<p style="color:var(--green);">✅ 升级完成！请重启写作台</p>';}else{bar.style.width="0";st.textContent="升级失败: "+(d.error||"未知错误");st.style.color="var(--red)";}}catch(e){bar.style.width="0";st.textContent="升级失败: "+e.message;st.style.color="var(--red)";}}
+async function saveSettings() {
+  const engine = document.getElementById("engineSelect").value;
+  try {
+    const r = await fetch("/api/switch-engine", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({engine})
+    });
+    const data = await r.json();
+    if (data.ok) {
+      document.getElementById("engineStatus").textContent = "引擎: " + engine;
+      showToast("已切换到: " + engine);
+      closeSettings();
+    }
+  } catch(e) { alert("切换失败: " + e.message); }
+}
+
+function showExport() {
+  document.getElementById("exportResult").style.display = "none";
+  document.getElementById("exportModal").style.display = "flex";
+}
+
+function closeExport() {
+  document.getElementById("exportModal").style.display = "none";
+}
+
+// ======== 预览 ========
+function updatePreview() {
+  const text = document.getElementById("editor").value;
+  const preview = document.getElementById("preview");
+  preview.innerHTML = text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/\n/g, "<br>");
+}
+
+function setupAutoPreview() {
+  document.getElementById("editor").addEventListener("input", updatePreview);
+}
 
 // ======== AI 面板 ========
-function toggleAIPanel(){const b=document.getElementById("aiPanelBody");const s=document.getElementById("aiPanel");const btn=document.getElementById("aiToggleBtn");if(b.style.display==="none"){b.style.display="flex";s.style.width="360px";s.style.minWidth="";btn.innerHTML="收起 ▲";}else{b.style.display="none";s.style.width="40px";s.style.minWidth="40px";btn.innerHTML="展开 ▼";}}
-function addUserMsg(text){var m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg user"><div class="ai-msg-row"><span class="msg-label">你</span><span class="msg-time">'+timeNow()+'</span></div><div class="ai-msg-text">'+escapeHtml(text)+'</div></div>';m.scrollTop=m.scrollHeight;}
-function addAssistantMsg(text){var mid="ai_"+Date.now();var m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg assistant" id="'+mid+'"><div class="ai-msg-row"><span class="msg-label">AI</span><span class="msg-time">'+timeNow()+'</span></div><div class="ai-msg-text">'+escapeHtml(text)+'</div><div class="ai-msg-actions"><button class="msg-btn" onclick="copyMsg(\''+mid+'\')" title="复制到剪贴板">📋</button><button class="msg-btn" onclick="insertMsg(\''+mid+'\')" title="插入到编辑器">📝</button></div></div>';m.scrollTop=m.scrollHeight;}
-function addSystemMsg(text){var m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg system-msg" style="background:transparent;text-align:center;color:var(--text-dim);font-size:12px;">'+escapeHtml(text)+'</div>';m.scrollTop=m.scrollHeight;}
-function addThinkingMsg(){var tid="think_"+Date.now();var m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg thinking" id="'+tid+'"><span class="msg-label">🤔 AI</span> 正在思考...</div>';m.scrollTop=m.scrollHeight;return tid;}
-function removeThinkingMsg(tid){var el=document.getElementById(tid);if(el)el.remove();}
-function timeNow(){var d=new Date();return d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");}
-function clearChat(){var m=document.getElementById("aiMessages");m.innerHTML="";addSystemMsg("对话已清空");}
-function copyMsg(mid){var el=document.getElementById(mid);if(!el)return;var txt=el.querySelector(".ai-msg-text");if(txt){navigator.clipboard.writeText(txt.textContent);showToast("已复制");}}
-function insertMsg(mid){var el=document.getElementById(mid);if(!el)return;var txt=el.querySelector(".ai-msg-text");if(txt){var ed=document.getElementById("editor");ed.value=ed.value+"\n\n"+txt.textContent;showToast("已插入编辑器");}}
-function addAssistantMsg(text){const m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg assistant"><span class="msg-label">AI</span>'+escapeHtml(text)+'</div>';m.scrollTop=m.scrollHeight;}
-function addSystemMsg(text){const m=document.getElementById("aiMessages");m.innerHTML+='<div class="ai-msg" style="background:transparent;text-align:center;color:var(--text-dim);font-size:12px;">'+escapeHtml(text)+'</div>';m.scrollTop=m.scrollHeight;}
+function toggleAIPanel() {
+  const panel = document.getElementById("aiPanel");
+  if (panel.style.display === "none") {
+    panel.style.display = "flex";
+  } else {
+    panel.style.display = "none";
+  }
+}
 
-// ======== 工具 ========
-function setLoading(loading){document.querySelectorAll(".editor-actions .btn,.ai-input-row .btn-primary").forEach(b=>b.disabled=loading);const gb=document.querySelectorAll(".editor-actions .btn-primary")[0];if(gb)gb.innerHTML=loading?'<span class="spinner"></span>AI 生成中...':"🤖 AI 生成";}
-function escapeHtml(text){const div=document.createElement("div");div.textContent=text;return div.innerHTML;}
-function formatTime(iso){if(!iso)return"";const d=new Date(iso);return d.toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});}
-function showToast(msg){const el=document.createElement("div");el.style.cssText="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;z-index:200;";el.textContent=msg;document.body.appendChild(el);setTimeout(()=>{el.style.opacity="0";setTimeout(()=>el.remove(),300);},2000);}
-document.addEventListener("keydown",function(e){if((e.ctrlKey||e.metaKey)&&e.key==="s"){e.preventDefault();saveDoc();}});
+function addUserMsg(text) {
+  const msgs = document.getElementById("aiMessages");
+  msgs.innerHTML += `<div class="ai-msg user"><span class="msg-label">你</span>${escapeHtml(text)}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+}
 
-// ======== 拖拽 ========
-(function(){const W=150,X=500;let h=null,t=null,sx=0,sw=0;[{hid:"resizeLeft",tid:"sidebar"},{hid:"resizeRight",tid:"aiPanel"}].forEach(c=>{const el=document.getElementById(c.hid);if(!el)return;el.addEventListener("mousedown",function(e){e.preventDefault();h=el;t=document.getElementById(c.tid);t._minW=W;t._maxW=X;sx=e.clientX;sw=t.offsetWidth;h.classList.add("active");document.body.style.cursor="col-resize";document.body.style.userSelect="none";});});document.addEventListener("mousemove",function(e){if(!h||!t)return;const d=e.clientX-sx;let nw=(h.id==="resizeRight")?sw-d:sw+d;nw=Math.max(t._minW,Math.min(t._maxW,nw));t.style.width=nw+"px";t.style.minWidth=nw+"px";});document.addEventListener("mouseup",function(){if(h)h.classList.remove("active");h=null;t=null;document.body.style.cursor="";document.body.style.userSelect="";});})();
+function addAssistantMsg(text) {
+  const msgs = document.getElementById("aiMessages");
+  msgs.innerHTML += `<div class="ai-msg assistant"><span class="msg-label">AI</span>${escapeHtml(text)}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+}
 
-function fetchGreenModels(){const url=document.getElementById("greenapiBaseUrl").value.trim();const key=document.getElementById("greenapiApiKey").value.trim();if(!url||!key){alert("请先填写接口地址和API密钥");return;}fetch("/api/proxy-models?url="+encodeURIComponent(url)+"&key="+encodeURIComponent(key)).then(r=>r.json()).then(d=>{if(d.models&&d.models.length){var sel=document.getElementById("greenapiModel");sel.value="";var list=d.models.slice(0,50).map(function(m){return'<option value="'+m+'">'+m+'</option>';}).join("");sel.outerHTML='<select id="greenapiModel" class="wizard-field-input" style="width:100%;">'+list+'</select>';showToast("找到 "+d.models.length+" 个模型");}else{alert(d.error||"未找到模型");}}).catch(function(e){alert("请求失败: "+e.message);});}
-function fetchCustomModels(){const url=document.getElementById("customBaseUrl").value.trim();const key=document.getElementById("customApiKey").value.trim();if(!url||!key){alert("请先填写接口地址和API密钥");return;}fetch("/api/proxy-models?url="+encodeURIComponent(url)+"&key="+encodeURIComponent(key)).then(r=>r.json()).then(d=>{if(d.models&&d.models.length){var sel=document.getElementById("customModel");sel.value="";var list=d.models.slice(0,50).map(function(m){return'<option value="'+m+'">'+m+'</option>';}).join("");sel.outerHTML='<select id="customModel" class="wizard-field-input" style="width:100%;">'+list+'</select>';showToast("找到 "+d.models.length+" 个模型");}else{alert(d.error||"未找到模型");}}).catch(function(e){alert("请求失败: "+e.message);});}
-function renderRecommendedModels(models){var groups={};models.forEach(function(m){if(!groups[m.ram])groups[m.ram]=[];groups[m.ram].push(m);});var html='';Object.keys(groups).forEach(function(ram){html+='<div style=\"margin-bottom:12px;\"><div style=\"font-size:11px;color:var(--accent);margin-bottom:4px;\">💡 '+ram+' 内存推荐</div>';groups[ram].forEach(function(m){var btn=m.file?'<button class=\"btn btn-xs\" onclick=\"downloadModel(\''+m.download_url+'\',\''+m.file+'\',this)\" style=\"float:right;margin-top:-4px;\">📥 下载</button>':'<a href=\"'+m.download_url+'\" target=\"_blank\" style=\"float:right;margin-top:-4px;color:var(--accent);font-size:12px;text-decoration:none;\">📥 打开下载页</a>';html+='<div style=\"padding:8px 10px;margin-bottom:4px;background:var(--bg4);border-radius:6px;font-size:12px;\"><span style=\"color:var(--text-bright);\">'+m.name+'</span> <span style=\"color:var(--text-dim);\">· '+m.brand+' · '+m.size+'</span><br><span style=\"color:var(--text-dim);\">'+m.desc+'</span>'+btn+'</div>';});html+='</div>';});document.getElementById("recommendedModels").innerHTML=html||'加载中...';}
-function downloadModel(url, file, btn){btn.disabled=true;btn.innerHTML='<span class=\"spinner\"></span>下载中';fetch('/api/download-model?url='+encodeURIComponent(url)+'&file='+encodeURIComponent(file)).then(r=>r.json()).then(d=>{if(d.ok){btn.innerHTML='✅ 完成';btn.style.color='var(--green)';showToast(d.message||(d.filename+' ('+d.size_mb+'MB)'));fetch('/api/local-models').then(r=>r.json()).then(models=>{var sel=document.getElementById('localModelSelect');if(!sel)return;sel.innerHTML=models.map(function(m){return'<option value=\"'+m.file+'\">'+m.name+' ('+m.size_mb+'MB)</option>';}).join('');if(models.length===0)sel.innerHTML='<option value=\"\">未发现模型文件</option>';}).catch(()=>{});}else{alert(d.error||'下载失败');btn.disabled=false;btn.innerHTML='📥 下载';}}).catch(function(e){alert('下载失败: '+e.message);btn.disabled=false;btn.innerHTML='📥 下载';});}
-function showInstallOptions(){document.getElementById("installOptions").style.display="block";document.getElementById("installLocalBtn").style.display="none";}
-function updateInstallBtn(){var opt=document.querySelector('input[name=installOpt]:checked').value;var btn=document.querySelector("#installOptions .btn-primary");if(opt==='1.5b'){btn.textContent='⬇ 开始安装 (~1GB，约5-20分钟)';}else{btn.textContent='⬇ 开始安装 (约50MB)';}}
-function installLocalEnv(){var opt=document.querySelector('input[name=installOpt]:checked').value;var prog=document.getElementById("installProgress");prog.style.display="block";prog.innerHTML='<span class="spinner"></span>正在下载'+((opt==='1.5b')?'模型(约1GB)...':'运行环境(约50MB)...');document.querySelectorAll("#installOptions button,#installOptions input").forEach(function(el){el.disabled=true;});fetch("/api/install-llama?opt="+encodeURIComponent(opt)).then(r=>r.json()).then(d=>{if(d.ok){prog.innerHTML='✅ '+d.message;document.getElementById("installOptions").style.display="none";showToast("安装完成！");setTimeout(function(){closeSettings();showSettings();},800);}else{prog.innerHTML='❌ '+d.error;document.querySelectorAll("#installOptions button,#installOptions input").forEach(function(el){el.disabled=false;});}}).catch(function(e){prog.innerHTML='❌ 下载失败: '+e.message;document.querySelectorAll("#installOptions button,#installOptions input").forEach(function(el){el.disabled=false;});});}
+function addSystemMsg(text) {
+  const msgs = document.getElementById("aiMessages");
+  msgs.innerHTML += `<div class="ai-msg" style="background:transparent;text-align:center;color:var(--text-dim);font-size:12px;">${escapeHtml(text)}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ======== 工具函数 ========
+function setLoading(loading) {
+  const btns = document.querySelectorAll(".editor-actions .btn, .ai-input-row .btn-primary");
+  btns.forEach(b => b.disabled = loading);
+  document.querySelectorAll(".editor-actions .btn-primary")[0].innerHTML = loading ? '<span class="spinner"></span>AI 生成中...' : '🤖 AI 生成';
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function formatTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleString("zh-CN", {month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"});
+}
+
+function showToast(msg) {
+  const el = document.createElement("div");
+  el.style.cssText = "position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;z-index:200;transition:opacity 0.3s;";
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el.remove(), 300); }, 2000);
+}
+
+// ======== 键盘快捷键 ========
+document.addEventListener("keydown", function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    e.preventDefault();
+    saveDoc();
+  }
+});

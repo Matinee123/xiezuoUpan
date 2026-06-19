@@ -1,273 +1,62 @@
-import json
-import mimetypes
-import socket
-import time
-import urllib.request
+﻿import json
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from urllib.parse import urlparse, parse_qs, unquote
 
-from .config import config, RECOMMENDED_MODELS
+from .config import config
 from .docstore import docstore
 from .llm import call_llm, LLMError
-from .export import export_markdown, export_html, export_wechat_html, export_docx, export_pdf
+from .export import export_markdown, export_html
 from .template import TemplateEngine
-from .updater import check_update, apply_update
-from .local_llm import model_info, start_server, stop_server, is_running, list_models, find_model, MODELS_DIR
 
 HERE = Path(__file__).resolve().parent.parent
 
-AVAILABLE_VERSIONS = ["通用写作", "党政写作", "商务写作", "法务写作", "教师写作", "学生写作", "职场写作", "媒体创作"]
-VERSION_MAP = {
-    "general": "通用写作", "party": "党政写作", "business": "商务写作",
-    "legal": "法务写作", "teacher": "教师写作", "student": "学生写作",
-    "office": "职场写作", "media": "媒体创作"
-}
-
 class APIHandler(SimpleHTTPRequestHandler):
-    static_dir = HERE / "通用写作" / "static"
-    version_dir = HERE / "通用写作"
-
     def __init__(self, *args, **kwargs):
         self.template_engine = None
-        self._current_version = "通用写作"
         super().__init__(*args, **kwargs)
 
     def log_message(self, format, *args):
         pass
 
-    def _get_version(self, default="通用写作"):
-        parsed = urlparse(self.path)
-        qs = parse_qs(parsed.query)
-        raw = qs.get("v", [default])[0]
-        if raw in VERSION_MAP:
-            return VERSION_MAP[raw]
-        if raw in AVAILABLE_VERSIONS:
-            return raw
-        return default
-
-    def _ensure_version(self, version):
-        if version != self._current_version:
-            self._current_version = version
-            self.version_dir = HERE / version
-            self.template_engine = None
-
-    def _serve_static(self):
-        path = urlparse(self.path).path.lstrip("/")
-        if not path:
-            path = "index.html"
-        file_path = self.static_dir / path
-        if file_path.exists() and file_path.is_file():
-            content_type, _ = mimetypes.guess_type(str(file_path))
-            if content_type is None:
-                content_type = "application/octet-stream"
-            self.send_response(200)
-            self.send_header("Content-Type", content_type)
-            self.send_header("Cache-Control", "no-cache")
-            self.end_headers()
-            self.wfile.write(file_path.read_bytes())
-        else:
-            index_path = self.static_dir / "index.html"
-            if index_path.exists():
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(index_path.read_bytes())
-            else:
-                self._json_response({"error": "Not Found"}, 404)
-
     def do_GET(self):
-        parsed = urlparse(self.path)
-        path = parsed.path
-
-        if path == "/api/health":
+        if self.path == "/api/health":
             self._json_response({"status": "ok", "version": "1.0.0", "engine": config.engine})
-        elif path == "/api/config":
+        elif self.path == "/api/config":
             self._json_response({
                 "engine": config.engine,
-                "engines": ["deepseek", "greenapi", "custom", "local"],
-                "deepseek_api_key": config.deepseek_api_key,
-                "deepseek_model": config.deepseek_model,
-                "greenapi_api_key": config.greenapi_api_key,
-                "greenapi_base_url": config.greenapi_base_url,
-                "greenapi_model": config.greenapi_model,
-                "ollama_model": config.ollama_model,
-                "local_model": config.local_model,
-                "local_base_url": config.local_base_url,
-                "custom_base_url": config.custom_base_url,
-                "custom_api_key": config.custom_api_key,
-                "custom_model": config.custom_model
+                "engines": ["deepseek", "openai", "ollama", "custom"]
             })
-        elif path == "/api/documents":
+        elif self.path == "/api/documents":
             self._json_response(docstore.list())
-        elif path.startswith("/api/documents/"):
-            doc_id = path.split("/")[-1]
+        elif self.path.startswith("/api/documents/"):
+            doc_id = self.path.split("/")[-1]
             doc = docstore.get(doc_id)
             if doc:
                 self._json_response(doc)
             else:
                 self._json_response({"error": "文档不存在"}, 404)
-        elif path == "/api/templates":
-            v = self._get_version()
-            self._ensure_version(v)
+        elif self.path == "/api/templates":
             self._json_response(self._get_template_engine().list_templates())
-        elif path.startswith("/api/template/"):
-            v = self._get_version()
-            self._ensure_version(v)
-            name = unquote(path.split("/api/template/")[-1])
-            tmpl = self._get_template_engine().get_template(name)
-            if tmpl:
-                self._json_response(tmpl)
-            else:
-                self._json_response({"error": "模板不存在"}, 404)
-        elif path == "/api/prompts":
-            v = self._get_version()
-            self._ensure_version(v)
+        elif self.path == "/api/prompts":
             self._json_response(self._get_template_engine().list_prompts())
-        elif path == "/api/has-key":
-            self._json_response({"has_key": config.has_active_key(), "engine": config.engine})
-        elif path == "/api/local-status":
-            self._json_response(model_info())
-        elif path == "/api/local-models":
-            self._json_response(list_models())
-        elif path == "/api/recommended-models":
-            self._json_response(RECOMMENDED_MODELS)
-        elif path == "/api/install-llama":
-            import zipfile, io, tempfile, shutil
-            # Check for model download option
-            opt = parse_qs(parsed.query).get("opt", ["runtime"])[0]
-            
-            # Step 1: Download llama-server
-            url = "https://github.com/ggml-org/llama.cpp/releases/download/b9370/llama-b9370-bin-win-cpu-x64.zip"
-            temp_zip = MODELS_DIR / "_llama_temp.zip"
-            try:
-                req = urllib.request.Request(url, headers={"User-Agent": "AI-Writing-Workstation"})
-                resp = urllib.request.urlopen(req, timeout=600)
-                temp_zip.write_bytes(resp.read())
-                with zipfile.ZipFile(temp_zip, "r") as zf:
-                    zf.extractall(MODELS_DIR)
-                temp_zip.unlink()
-            except Exception as e:
-                if temp_zip.exists():
-                    temp_zip.unlink()
-                self._json_response({"ok": False, "error": f"llama-server下载失败: {e}"}, 500)
-                return
-
-            # Step 2: Download model if requested
-            if opt == "1.5b":
-                model_url = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
-                model_path = MODELS_DIR / "qwen2.5-1.5b-instruct-q4_k_m.gguf"
-                try:
-                    req = urllib.request.Request(model_url, headers={"User-Agent": "AI-Writing-Workstation"})
-                    resp = urllib.request.urlopen(req, timeout=1200)
-                    model_path.write_bytes(resp.read())
-                    self._json_response({"ok": True, "message": f"运行环境 + Qwen2.5-1.5B(~1GB) 安装完成"})
-                except Exception as e:
-                    if model_path.exists():
-                        model_path.unlink()
-                    self._json_response({"ok": True, "message": "llama-server安装完成(模型下载失败: {})".format(str(e)[:60])})
-            else:
-                self._json_response({"ok": True, "message": "llama-server 安装完成"})
-        elif path == "/api/download-model":
-            url = parse_qs(parsed.query).get("url", [None])[0]
-            fname = parse_qs(parsed.query).get("file", ["model.gguf"])[0]
-            if not url:
-                self._json_response({"error": "缺少下载地址"}, 400)
-                return
-            dest = MODELS_DIR / fname
-            if dest.exists():
-                self._json_response({"ok": True, "message": "模型已存在，跳过下载"})
-                return
-            tmp = MODELS_DIR / (fname + ".tmp")
-            try:
-                req = urllib.request.Request(url, headers={"User-Agent": "AI-Writing-Workstation"})
-                resp = urllib.request.urlopen(req, timeout=1800)
-                tmp.write_bytes(resp.read())
-                tmp.rename(dest)
-                size_mb = round(dest.stat().st_size / (1024*1024), 1)
-                self._json_response({"ok": True, "filename": fname, "size_mb": size_mb})
-            except Exception as e:
-                if tmp.exists():
-                    tmp.unlink()
-                self._json_response({"ok": False, "error": str(e)[:200]}, 500)
-        elif path == "/api/proxy-models":
-            base_url = parse_qs(parsed.query).get("url", [None])[0]
-            api_key = parse_qs(parsed.query).get("key", [None])[0]
-            if not base_url or not api_key:
-                self._json_response({"error": "缺少参数"}, 400)
-                return
-            try:
-                url = base_url.rstrip("/") + "/models"
-                req = urllib.request.Request(url, headers={"Authorization": "Bearer " + api_key, "User-Agent": "AI-Writing-Workstation"})
-                resp = urllib.request.urlopen(req, timeout=10)
-                data = json.loads(resp.read().decode())
-                models = []
-                for m in data.get("data", []):
-                    models.append(m.get("id", ""))
-                self._json_response({"models": sorted(models)})
-            except Exception as e:
-                self._json_response({"error": str(e)}, 500)
-        elif path == "/api/check-update":
-            self._json_response(check_update())
-        elif path == "/api/version":
+        elif self.path == "/api/version":
             version_file = HERE / "version.json"
             if version_file.exists():
-                try:
-                    self._json_response(json.loads(version_file.read_text(encoding="utf-8-sig")))
-                except Exception:
-                    self._json_response({"version": "1.1.20"})
+                self._json_response(json.loads(version_file.read_text(encoding="utf-8")))
             else:
                 self._json_response({"version": "1.0.0"})
-        elif path == "/api/versions":
-            self._json_response([
-                {"id":"party","name":"党政写作","icon":"🏛","desc":"通知、请示、报告、讲话稿、会议纪要","theme":"#cc0000"},
-                {"id":"business","name":"商务写作","icon":"💼","desc":"商业计划书、合同、投标方案、商务邮件、翻译","theme":"#1a56db"},
-                {"id":"legal","name":"法务写作","icon":"⚖","desc":"起诉状、律师函、法律意见书、合同审查","theme":"#2d3748"},
-                {"id":"teacher","name":"教师写作","icon":"🍎","desc":"教案、试卷、教学计划、课件大纲","theme":"#059669"},
-                {"id":"student","name":"学生写作","icon":"📚","desc":"论文、作业、读书笔记、学习总结","theme":"#3b82f6"},
-                {"id":"office","name":"职场写作","icon":"👔","desc":"周报、述职、OKR、工作总结","theme":"#4b5563"},
-                {"id":"media","name":"媒体创作","icon":"📱","desc":"公众号、小红书、短视频脚本、新闻稿","theme":"#ea580c"},
-                {"id":"general","name":"通用写作","icon":"🌐","desc":"自由创作，适合各类日常写作场景","theme":"#6366f1"}
-            ])
-        elif path == "/api/download":
-            fname = parse_qs(parsed.query).get("f", [None])[0]
-            if fname:
-                fpath = HERE / "exports" / fname
-                if fpath.exists():
-                    self.send_response(200)
-                    ct = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if fname.endswith(".docx") else "application/pdf"
-                    self.send_header("Content-Type", ct)
-                    self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
-                    self.send_header("Content-Length", str(fpath.stat().st_size))
-                    self.end_headers()
-                    self.wfile.write(fpath.read_bytes())
-                    return
-            self._json_response({"error": "文件不存在"}, 404)
-        elif path == "/api/search":
-            q = parse_qs(parsed.query).get("q", [""])[0]
-            if q:
-                results = []
-                for doc_id, meta in docstore.docs.items():
-                    title = meta.get("title", "")
-                    if q.lower() in title.lower():
-                        results.append({"id": doc_id, "title": title, "updated_at": meta.get("updated_at", "")})
-                self._json_response(results)
-            else:
-                self._json_response([])
         else:
-            self._serve_static()
+            super().do_GET()
 
     def do_POST(self):
         body = self._read_body()
-        path = urlparse(self.path).path
-
-        if path == "/api/documents":
+        if self.path == "/api/documents":
             title = body.get("title", "未命名文档")
             content = body.get("content", "")
             doc_id = docstore.create(title, content)
             self._json_response({"id": doc_id, "title": title})
-        elif path.startswith("/api/documents/") and path.endswith("/save"):
-            doc_id = path.split("/")[-2]
+        elif self.path.startswith("/api/documents/") and self.path.endswith("/save"):
+            doc_id = self.path.split("/")[-2]
             title = body.get("title", "未命名文档")
             content = body.get("content", "")
             result = docstore.save(doc_id, title, content)
@@ -275,29 +64,22 @@ class APIHandler(SimpleHTTPRequestHandler):
                 self._json_response({"id": doc_id, "title": title})
             else:
                 self._json_response({"error": "文档不存在"}, 404)
-        elif path.startswith("/api/documents/") and path.endswith("/delete"):
-            doc_id = path.split("/")[-2]
+        elif self.path.startswith("/api/documents/") and self.path.endswith("/delete"):
+            doc_id = self.path.split("/")[-2]
             result = docstore.delete(doc_id)
             self._json_response({"ok": result})
-        elif path == "/api/chat":
+        elif self.path == "/api/chat":
             messages = body.get("messages", [])
             try:
-                if config.engine == "local":
-                    if not self._ensure_local_ready():
-                        self._json_response({"error": "本地模型启动失败，请重试"}, 503)
-                        return
                 reply = call_llm(messages, config)
                 self._json_response({"reply": reply})
             except LLMError as e:
                 self._json_response({"error": str(e)}, 500)
-        elif path == "/api/generate":
+        elif self.path == "/api/generate":
             prompt = body.get("prompt", "")
             template_name = body.get("template", "")
             if not prompt:
                 self._json_response({"error": "请输入写作需求"}, 400)
-            v = body.pop("version", None)
-            if v:
-                self._ensure_version(v)
             te = self._get_template_engine()
             system_prompt = ""
             if template_name:
@@ -305,20 +87,16 @@ class APIHandler(SimpleHTTPRequestHandler):
                 if tmpl and "system_prompt" in tmpl:
                     system_prompt = tmpl["system_prompt"]
             if not system_prompt:
-                prompt_text = te.get_prompt("通用写作") or te.get_prompt("通知") or te.get_prompt("通用文章") or ""
+                prompt_text = te.get_prompt("通用写作")
                 system_prompt = prompt_text or "你是一个专业的写作助手。请根据用户的需求撰写高质量的文章。"
             messages = [{"role": "system", "content": system_prompt}]
             messages.append({"role": "user", "content": prompt})
             try:
-                if config.engine == "local":
-                    if not self._ensure_local_ready():
-                        self._json_response({"error": "本地模型启动失败，请重试"}, 503)
-                        return
                 reply = call_llm(messages, config, temperature=0.7, max_tokens=8192)
                 self._json_response({"content": reply})
             except LLMError as e:
                 self._json_response({"error": str(e)}, 500)
-        elif path == "/api/continue":
+        elif self.path == "/api/continue":
             content = body.get("content", "")
             if not content:
                 self._json_response({"error": "没有可续写的内容"}, 400)
@@ -327,15 +105,11 @@ class APIHandler(SimpleHTTPRequestHandler):
                 {"role": "user", "content": f"以下是我已经写的内容：\n\n{content}\n\n请继续写下去："}
             ]
             try:
-                if config.engine == "local":
-                    if not self._ensure_local_ready():
-                        self._json_response({"error": "本地模型启动失败，请重试"}, 503)
-                        return
                 reply = call_llm(messages, config)
                 self._json_response({"content": reply})
             except LLMError as e:
                 self._json_response({"error": str(e)}, 500)
-        elif path == "/api/rewrite":
+        elif self.path == "/api/rewrite":
             content = body.get("content", "")
             style = body.get("style", "更通顺")
             if not content:
@@ -345,119 +119,47 @@ class APIHandler(SimpleHTTPRequestHandler):
                 {"role": "user", "content": content}
             ]
             try:
-                if config.engine == "local":
-                    if not self._ensure_local_ready():
-                        self._json_response({"error": "本地模型启动失败，请重试"}, 503)
-                        return
                 reply = call_llm(messages, config)
                 self._json_response({"content": reply})
             except LLMError as e:
                 self._json_response({"error": str(e)}, 500)
-        elif path == "/api/export":
-            title = body.get("title", "未命名")
-            content = body.get("content", "")
+        elif self.path == "/api/export":
+            doc_id = body.get("doc_id", "")
             fmt = body.get("format", "markdown")
+            doc = docstore.get(doc_id) if doc_id else body
+            if not doc:
+                self._json_response({"error": "内容为空"}, 400)
+            title = doc.get("title", "未命名")
+            content = doc.get("content", "")
             if fmt == "markdown":
                 result = export_markdown(title, content)
                 self._json_response({"format": "md", "content": result})
             elif fmt == "html":
                 result = export_html(title, content)
                 self._json_response({"format": "html", "content": result})
-            elif fmt == "wechat":
-                result = export_wechat_html(title, content, body.get("style", "business"))
-                self._json_response({"format": "wechat", "content": result})
-            elif fmt == "docx":
-                data, err = export_docx(title, content)
-                if err:
-                    self._json_response({"error": err}, 400)
-                else:
-                    import uuid
-                    fname = f"exports/doc_{uuid.uuid4().hex[:8]}.docx"
-                    fpath = HERE / fname
-                    fpath.parent.mkdir(parents=True, exist_ok=True)
-                    fpath.write_bytes(data)
-                    self._json_response({"format": "docx", "download_url": f"/api/download?f={fpath.name}"})
-            elif fmt == "pdf":
-                data, err = export_pdf(title, content)
-                if err:
-                    self._json_response({"error": err}, 400)
-                else:
-                    import uuid
-                    fname = f"exports/doc_{uuid.uuid4().hex[:8]}.pdf"
-                    fpath = HERE / fname
-                    fpath.parent.mkdir(parents=True, exist_ok=True)
-                    fpath.write_bytes(data)
-                    self._json_response({"format": "pdf", "download_url": f"/api/download?f={fpath.name}"})
             else:
                 self._json_response({"error": f"不支持的格式: {fmt}"}, 400)
-        elif path == "/api/switch-engine":
+        elif self.path == "/api/switch-engine":
             engine = body.get("engine", "")
-            if engine not in ["deepseek", "greenapi", "custom", "local"]:
+            if engine in ["deepseek", "openai", "ollama", "custom"]:
+                config.engine = engine
+                self._json_response({"ok": True, "engine": engine})
+            else:
                 self._json_response({"error": f"不支持的引擎: {engine}"}, 400)
-                return
-            if engine == "local" and not is_running():
-                mname = body.get("model", "")
-                if mname:
-                    mp = str(MODELS_DIR / mname)
-                else:
-                    mp = find_model()
-                if not mp:
-                    self._json_response({"error": "未找到模型文件，请先下载 .gguf 放入 _models/", "engine": config.engine}, 500)
-                    return
-                ok, msg = start_server(mp)
-                if not ok:
-                    self._json_response({"error": msg, "engine": config.engine}, 500)
-                    return
-            config.engine = engine
-            if engine == "deepseek":
-                config.deepseek_api_key = body.get("api_key", config.deepseek_api_key)
-                config.deepseek_model = body.get("model", config.deepseek_model)
-            elif engine == "greenapi":
-                config.greenapi_api_key = body.get("api_key", config.greenapi_api_key)
-                config.greenapi_base_url = body.get("base_url", config.greenapi_base_url)
-                config.greenapi_model = body.get("model", config.greenapi_model)
-            elif engine == "local":
-                config.local_model = body.get("model", config.local_model)
-                config.local_base_url = body.get("base_url", config.local_base_url)
-                if not config.local_model:
-                    from pathlib import Path
-                    m = find_model()
-                    if m:
-                        config.local_model = Path(m).stem
-            elif engine == "custom":
-                config.custom_base_url = body.get("base_url", config.custom_base_url)
-                config.custom_api_key = body.get("api_key", config.custom_api_key)
-                config.custom_model = body.get("model", config.custom_model)
-            try:
-                env_file = HERE / ".env.local"
-                env_file.write_text(config.to_env_text(), encoding="utf-8")
-            except Exception:
-                pass
-            self._json_response({"ok": True, "engine": engine})
-        elif path == "/api/apply-update":
-            download_url = body.get("download_url", "")
-            if not download_url:
-                self._json_response({"error": "缺少下载地址"}, 400)
-                return
-            result = apply_update(download_url)
-            self._json_response(result)
         else:
             self._json_response({"error": "Not Found"}, 404)
 
     def _get_template_engine(self):
         if self.template_engine is None:
-            prompts_dir = self.version_dir / "prompts"
-            templates_dir = self.version_dir / "templates"
+            version_dir = self._detect_version_dir()
+            prompts_dir = version_dir / "prompts" if version_dir else HERE / "通用写作" / "prompts"
+            templates_dir = version_dir / "templates" if version_dir else HERE / "通用写作" / "templates"
             self.template_engine = TemplateEngine(prompts_dir, templates_dir)
         return self.template_engine
 
-    def _ensure_local_ready(self):
-        """确保本地模型已启动——不信 health，重启保证干净状态"""
-        from .local_llm import start_server, stop_server
-        stop_server()
-        time.sleep(1)
-        ok, msg = start_server()
-        return ok
+    def _detect_version_dir(self):
+        path = Path(self.path[1:] if self.path.startswith("/") else self.path)
+        return None
 
     def _read_body(self):
         length = int(self.headers.get("Content-Length", 0))
@@ -473,15 +175,11 @@ class APIHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
 
-def run_server(port=None, version_name="通用写作"):
+def run_server(port=None):
     if port is None:
         port = config.port
-    APIHandler.static_dir = HERE / version_name / "static"
-    APIHandler.version_dir = HERE / version_name
-    HTTPServer.allow_reuse_address = True
     server = HTTPServer(("0.0.0.0", port), APIHandler)
-    server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    print(f"[server] AI 写作工作台已启动 -> http://localhost:{port}")
+    print(f"[server] AI 写作工作台已启动 → http://localhost:{port}")
     print(f"[server] 引擎: {config.engine}")
     print(f"[server] 按 Ctrl+C 停止")
     try:

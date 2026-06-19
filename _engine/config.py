@@ -1,31 +1,24 @@
-import os
+﻿import os
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
 ENV_FILE = HERE / ".env.local"
-
-RECOMMENDED_MODELS = [
-    {"ram":"8GB","name":"Qwen2.5-1.5B","brand":"千问","size":"~1.0GB","desc":"日常写作够用，速度快","url":"https://modelscope.cn/models/Qwen/Qwen2.5-1.5B-Instruct-GGUF/summary","file":"qwen2.5-1.5b-instruct-q4_k_m.gguf","download_url":"https://modelscope.cn/models/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/master/qwen2.5-1.5b-instruct-q4_k_m.gguf"},
-    {"ram":"16GB","name":"Qwen2.5-3B","brand":"千问","size":"~2.0GB","desc":"写作质量明显提升","url":"https://modelscope.cn/models/Qwen/Qwen2.5-3B-Instruct-GGUF/summary","file":"qwen2.5-3b-instruct-q4_k_m.gguf","download_url":"https://modelscope.cn/models/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/master/qwen2.5-3b-instruct-q4_k_m.gguf"},
-    {"ram":"32GB","name":"Qwen2.5-7B","brand":"千问","size":"~4.5GB","desc":"专业级写作效果","url":"https://modelscope.cn/models/Qwen/Qwen2.5-7B-Instruct-GGUF/summary","file":"qwen2.5-7b-instruct-q4_k_m.gguf","download_url":"https://modelscope.cn/models/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/master/qwen2.5-7b-instruct-q4_k_m.gguf"},
-    {"ram":"32GB","name":"Qwen2.5-14B","brand":"千问","size":"~8.5GB","desc":"顶级写作质量","url":"https://modelscope.cn/models/Qwen/Qwen2.5-14B-Instruct-GGUF/summary","file":"qwen2.5-14b-instruct-q4_k_m.gguf","download_url":"https://modelscope.cn/models/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/master/qwen2.5-14b-instruct-q4_k_m.gguf"},
-]
 
 class Config:
     def __init__(self):
         self.engine = "deepseek"
         self.deepseek_api_key = ""
         self.deepseek_base_url = "https://api.deepseek.com"
-        self.deepseek_model = "deepseek-chat"
         self.openai_api_key = ""
         self.openai_base_url = "https://api.openai.com/v1"
+        self.deepseek_model = "deepseek-chat"
         self.greenapi_api_key = ""
         self.greenapi_base_url = "https://api.martin007.top/v1"
         self.greenapi_model = "gpt-4o-mini"
+        self.local_base_url = "http://127.0.0.1:8088/v1"
+        self.local_model = ""
         self.ollama_base_url = "http://localhost:11434/v1"
         self.ollama_model = "qwen2.5:latest"
-        self.local_base_url = "http://127.0.0.1:8088/v1"
-        self.local_model = ""  # Auto-detect from gguf file
         self.custom_api_key = ""
         self.custom_base_url = ""
         self.custom_model = ""
@@ -52,24 +45,24 @@ class Config:
                 self.deepseek_base_url = value
             elif key == "DEEPSEEK_MODEL":
                 self.deepseek_model = value
-            elif key == "OPENAI_API_KEY":
-                self.openai_api_key = value
-            elif key == "OPENAI_BASE_URL":
-                self.openai_base_url = value
             elif key == "GREENAPI_API_KEY":
                 self.greenapi_api_key = value
             elif key == "GREENAPI_BASE_URL":
                 self.greenapi_base_url = value
             elif key == "GREENAPI_MODEL":
                 self.greenapi_model = value
-            elif key == "OLLAMA_BASE_URL":
-                self.ollama_base_url = value
-            elif key == "OLLAMA_MODEL":
-                self.ollama_model = value
             elif key == "LOCAL_BASE_URL":
                 self.local_base_url = value
             elif key == "LOCAL_MODEL":
                 self.local_model = value
+            elif key == "OPENAI_API_KEY":
+                self.openai_api_key = value
+            elif key == "OPENAI_BASE_URL":
+                self.openai_base_url = value
+            elif key == "OLLAMA_BASE_URL":
+                self.ollama_base_url = value
+            elif key == "OLLAMA_MODEL":
+                self.ollama_model = value
             elif key == "CUSTOM_API_KEY":
                 self.custom_api_key = value
             elif key == "CUSTOM_BASE_URL":
@@ -92,16 +85,10 @@ ENGINE=deepseek
 # DeepSeek (默认，中文写作首选)
 DEEPSEEK_API_KEY=
 DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
 
 # OpenAI 兼容 (支持 GPT、Claude 等)
 OPENAI_API_KEY=
 OPENAI_BASE_URL=https://api.openai.com/v1
-
-# Green-API (稳定 API 中转)
-GREENAPI_API_KEY=
-GREENAPI_BASE_URL=https://api.martin007.top/v1
-GREENAPI_MODEL=gpt-4o-mini
 
 # Ollama 本地模型 (离线使用)
 OLLAMA_BASE_URL=http://localhost:11434/v1
@@ -137,17 +124,17 @@ PORT=8080
                 "base_url": self.greenapi_base_url,
                 "model": self.greenapi_model
             }
-        elif self.engine == "ollama":
-            return {
-                "api_key": "ollama",
-                "base_url": self.ollama_base_url,
-                "model": self.ollama_model
-            }
         elif self.engine == "local":
             return {
                 "api_key": "local",
                 "base_url": self.local_base_url,
                 "model": self.local_model or "local-model"
+            }
+        elif self.engine == "ollama":
+            return {
+                "api_key": "ollama",
+                "base_url": self.ollama_base_url,
+                "model": self.ollama_model
             }
         elif self.engine == "custom":
             return {
@@ -158,46 +145,39 @@ PORT=8080
         return None
 
     def has_active_key(self):
-        if self.engine in ("ollama", "local"):
+        if self.engine == "local":
             return True
         cfg = self.get_active_config()
         if cfg is None:
             return False
         return bool(cfg.get("api_key", "").strip())
 
-
     def to_env_text(self):
         return f"""# AI 写作工作台 - 配置
-# 不使用的项目留空即可
-
-# 引擎选择: deepseek / greenapi / ollama / custom
 ENGINE={self.engine}
-
-# DeepSeek (默认，中文写作首选)
 DEEPSEEK_API_KEY={self.deepseek_api_key}
 DEEPSEEK_BASE_URL={self.deepseek_base_url}
 DEEPSEEK_MODEL={self.deepseek_model}
-
-# OpenAI 兼容 (支持 GPT、Claude 等)
 OPENAI_API_KEY={self.openai_api_key}
 OPENAI_BASE_URL={self.openai_base_url}
-
-# Green-API (稳定 API 中转)
 GREENAPI_API_KEY={self.greenapi_api_key}
 GREENAPI_BASE_URL={self.greenapi_base_url}
 GREENAPI_MODEL={self.greenapi_model}
-
-# Ollama 本地模型 (离线使用)
 OLLAMA_BASE_URL={self.ollama_base_url}
 OLLAMA_MODEL={self.ollama_model}
-
-# 自定义 API (任何兼容 OpenAI 接口的服务)
 CUSTOM_API_KEY={self.custom_api_key}
 CUSTOM_BASE_URL={self.custom_base_url}
 CUSTOM_MODEL={self.custom_model}
-
-# 服务端口
+LOCAL_BASE_URL={self.local_base_url}
+LOCAL_MODEL={self.local_model}
 PORT={self.port}
 """
+
+RECOMMENDED_MODELS = [
+    {"ram":"8GB","name":"Qwen2.5-1.5B","brand":"千问","size":"~1.0GB","desc":"日常写作够用","url":"https://modelscope.cn/models/Qwen/Qwen2.5-1.5B-Instruct-GGUF/summary","file":"qwen2.5-1.5b-instruct-q4_k_m.gguf","download_url":"https://modelscope.cn/models/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/master/qwen2.5-1.5b-instruct-q4_k_m.gguf"},
+    {"ram":"16GB","name":"Qwen2.5-3B","brand":"千问","size":"~2.0GB","desc":"写作质量明显提升","url":"https://modelscope.cn/models/Qwen/Qwen2.5-3B-Instruct-GGUF/summary","file":"qwen2.5-3b-instruct-q4_k_m.gguf","download_url":"https://modelscope.cn/models/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/master/qwen2.5-3b-instruct-q4_k_m.gguf"},
+    {"ram":"32GB","name":"Qwen2.5-7B","brand":"千问","size":"~4.5GB","desc":"专业级写作效果","url":"https://modelscope.cn/models/Qwen/Qwen2.5-7B-Instruct-GGUF/summary","file":"qwen2.5-7b-instruct-q4_k_m.gguf","download_url":"https://modelscope.cn/models/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/master/qwen2.5-7b-instruct-q4_k_m.gguf"},
+    {"ram":"32GB","name":"Qwen2.5-14B","brand":"千问","size":"~8.5GB","desc":"顶级写作质量","url":"https://modelscope.cn/models/Qwen/Qwen2.5-14B-Instruct-GGUF/summary","file":"qwen2.5-14b-instruct-q4_k_m.gguf","download_url":"https://modelscope.cn/models/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/master/qwen2.5-14b-instruct-q4_k_m.gguf"},
+]
 
 config = Config()

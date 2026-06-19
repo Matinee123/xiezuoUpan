@@ -1,13 +1,10 @@
-{
-  "version": "1.3.0",
-  "build": 0,
-  "release_date": "2026-05-28",
+﻿{
+  "version": "1.0.0",
+  "build": 1,
+  "release_date": "2026-05-26",
   "min_compatible_version": "1.0.0",
-  "update_url": "https://api.github.com/repos/Matinee123/xiezuoUpan/releases/latest",
+  "update_url": "https://api.github.com/repos/anomalyco/xiezuoUpan/releases/latest",
   "changelog": {
-    "1.0.0": "首发版: 8个行业57个模板",
-    "1.1.0": "离线本地大模型引擎(llama.cpp+千问)",
-    "1.2.0": "AI对话面板重写+残留进程修复",
-    "1.2.3": "文章一闪而过根除+首次生成失败修复+JSON保护"
+    "1.0.0": "首个版本：核心引擎 + 通用写作 MVP，支持 AI 对话写作、文档管理、Markdown/HTML 导出"
   }
 }
